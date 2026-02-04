@@ -358,6 +358,15 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             this.mode = "room";
             this.pending = null;
 
+            const remainingCards = g.table.filter(Boolean);
+            if (
+                g.deck.length === 0 &&
+                remainingCards.length === 1 &&
+                isPotion(remainingCards[0])
+            ) {
+                return this.finishGameClear(remainingCards[0]);
+            }
+
             const lines = [...this.statusLines(), "", ...messageLines, ""];
 
             const options = [];
@@ -622,15 +631,13 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             });
         },
 
-        finishGameClear() {
+        finishGameClear(bonusCardOverride = null) {
             const g = this.game;
             const remaining = g.table.filter(Boolean);
             const lastRemainingCard =
-                remaining.length === 1 ? remaining[0] : null;
+                bonusCardOverride ?? (remaining.length === 1 ? remaining[0] : null);
             const bonus =
-                lastRemainingCard && isPotion(lastRemainingCard)
-                    ? lastRemainingCard.rank
-                    : 0;
+                lastRemainingCard && isPotion(lastRemainingCard) ? lastRemainingCard.rank : 0;
             const score = g.hp + bonus;
             const bonusLine = bonus
                 ? {
