@@ -193,7 +193,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
         mode: "menu",
         game: null,
         pending: null, // e.g. { kind: 'enemyChoice', slotIndex, enemyCard }
-        settings: { coloredText: true },
+        settings: { coloredText: true, hintText: true },
 
         setScreen(screenModel) {
             applyColoredTextSetting(this.settings.coloredText);
@@ -257,6 +257,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             this.pending = null;
 
             const enabled = this.settings.coloredText;
+            const hintEnabled = this.settings.hintText;
             this.setScreen({
                 lines: ["Options"],
                 options: [
@@ -265,6 +266,14 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                         label: `Colored text (${enabled ? "Enabled" : "Disabled"})`,
                         onSelect: () => {
                             this.settings.coloredText = !this.settings.coloredText;
+                            this.showOptions();
+                        },
+                    },
+                    {
+                        key: "2",
+                        label: `Hint text (${hintEnabled ? "Enabled" : "Disabled"})`,
+                        onSelect: () => {
+                            this.settings.hintText = !this.settings.hintText;
                             this.showOptions();
                         },
                     },
@@ -416,7 +425,20 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
 
             for (let i = 0; i < 4; i += 1) {
                 const card = g.table[i];
-                const labelParts = card ? [cardSpan(card)] : [elSpan("-", "card")];
+                const labelParts = (() => {
+                    if (!card) return [elSpan("-", "card")];
+
+                    const parts = [cardSpan(card)];
+                    if (!this.settings.hintText) return parts;
+
+                    if (isEnemy(card)) parts.push(elSpan(` Enemy, ${card.rank}`, "dim"));
+                    else if (isWeapon(card)) parts.push(elSpan(` Weapon, ${card.rank}`, "dim"));
+                    else if (isPotion(card)) parts.push(elSpan(` Health, ${card.rank}`, "dim"));
+                    else if (isRepairToolkit(card)) parts.push(elSpan(" Repair", "dim"));
+                    else if (isPoisonPotion(card)) parts.push(elSpan(" Poison 10", "dim"));
+
+                    return parts;
+                })();
                 options.push({
                     key: String(i + 1),
                     labelParts,
