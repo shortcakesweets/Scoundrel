@@ -6,6 +6,7 @@
     --green: #00ff66;
     --red: #ff3b30;
     --yellow: #ffd60a;
+    --light-yellow: #fff3a0;
     --purple: #bf5af2;
     --status: #9aa0a6;
     --border: rgba(255, 255, 255, 0.18);
@@ -63,6 +64,11 @@ body {
     color: inherit;
 }
 
+.hash1,
+.hash2 {
+    color: inherit;
+}
+
 body[data-colored-text="on"] .dim {
     color: var(--fg-dim);
 }
@@ -86,6 +92,14 @@ body[data-colored-text="on"] .card.toolkit {
 
 body[data-colored-text="on"] .card.poison {
     color: var(--purple);
+}
+
+body[data-colored-text="on"] .hash1 {
+    color: var(--yellow);
+}
+
+body[data-colored-text="on"] .hash2 {
+    color: var(--light-yellow);
 }
 
 body[data-colored-text="on"] .card.enemy {

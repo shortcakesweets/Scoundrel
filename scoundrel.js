@@ -117,6 +117,16 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
         outputEl.appendChild(line);
     }
 
+    function headingLineParts(text) {
+        const m = /^(#{1,2})(\s+)(.*)$/.exec(text);
+        if (!m) return null;
+        const hash = m[1];
+        const space = m[2];
+        const rest = m[3];
+        const hashClass = hash.length === 1 ? "hash1" : "hash2";
+        return [elSpan(hash, hashClass), space, rest];
+    }
+
     function addLineParts(parts, className) {
         const line = document.createElement("div");
         line.className = className ? `line ${className}` : "line";
@@ -162,7 +172,11 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
     function renderScreen({ lines = [], options = [], dimLines = [] }) {
         clearOutput();
         for (const l of lines) {
-            if (typeof l === "string") addLine(l);
+            if (typeof l === "string") {
+                const headingParts = headingLineParts(l);
+                if (headingParts) addLineParts(headingParts);
+                else addLine(l);
+            }
             else if (l && typeof l === "object" && Array.isArray(l.parts))
                 addLineParts(l.parts, l.className);
         }
@@ -292,40 +306,80 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             this.pending = null;
             this.setScreen({
                 lines: [
-                    "How to play",
+                    "Scoundrel",
                     "",
-                    "You are a scoundrel exploring rooms filled with enemies...",
+                    "You are a Scoundrel exploring a dungeon...",
                     "",
-                    "Modes:",
-                    "- Start game: Classic (no J/Q/K/A Hearts/Diamonds).",
-                    "- Start game +: Includes toolkits and poison.",
+                    "A small roguelike playable with a deck of cards.",
+                    "In this game, J,Q,K,A's rank are 11, 12, 13, and 14.",
                     "",
-                    "Card types:",
-                    "- Diamonds 2-10 (◆): Weapons.",
-                    "   You may equip only one weapon at a time.",
-                    "   If you take one up, the old one will be discarded.",
-                    "   Weapons can only be used on enemies with rank lower",
-                    "   than the last enemy killed with that weapon.",
-                    "- Diamonds J/Q/K/A (◆): Repair Toolkits.",
-                    "   Removes the top enemy from your weapon's kill stack.",
-                    "- Spades/Clubs (♠/♣): Enemies.",
-                    "- Hearts 2-10(♥): Health Potions",
-                    "   Each room, you may use only one potion. Second one fizzles.",
-                    "   You cannot heal beyond your starting HP (20).",
-                    "   J/Q/K/A of Hearts are Poison Potions (damage).",
-                    "   J/Q/K/A of Diamonds are Repair Toolkits (pop weapon stack).",
-                    "- Hearts J/Q/K/A (♥): Poison Potions.",
-                    "   Deal damage to you when used. Each room, you may use only one potion.",
+                    "# Room",
                     "",
-                    "Enemies:",
-                    "- Weapon: takes damage of max(0, enemy - weapon).",
-                    "- Fist: takes damage of enemy rank, but does not affect weapon stack.",
+                    "Each room is filled with 4 interactable cards.",
+                    "You may flee or fight the room.",
                     "",
-                    "Gameplay:",
-                    "  In a room, you may flee once (not twice in a row),",
-                    "  or fight by interacting with 3 cards; the 4th carries over.",
-                    "  You die if your remaining hp is 0",
-                    "  You clear the game if you run out of cards to draw a new room.",
+                    "## Flee",
+                    "All 4 cards on the table will be restacked at the bottom of the dungeon.",
+                    "Then, 4 new cards will be drawn.",
+                    "",
+                    "You may not flee 2 times in a row.",
+                    "",
+                    "## Fight",
+                    "When you choose to fight, you should interact with 3 cards.",
+                    "After that, 3 new cards are drawn and creates a new room.",
+                    "",
+                    "# Interactable cards",
+                    "",
+                    "## 2-10 of Diamonds",
+                    "",
+                    "These are your weapons.",
+                    "You may only hold 1 weapon. If you select another, the old one will be discarded.",
+                    "",
+                    "## 2-10 of Hearts",
+                    "",
+                    "These are health potions. Your HP will increase by it's rank.",
+                    "Your HP cannot exceed your initial HP (20).",
+                    "",
+                    "You may only drink 1 potion in a room.",
+                    "Any potions consumed after will fizzle and have no effect.",
+                    "",
+                    "## 2-A of Spades & Clubs",
+                    "",
+                    "These are enemies. You may kill it by using your weapon or your bare fist.",
+                    "",
+                    "1. Using a weapon",
+                    "Weapons can reduce damage when killing an enemy.",
+                    "The damage that you take is max(enemy rank - weapon rank, 0).",
+                    "",
+                    "However, killing an enemy with a weapon makes it dull.",
+                    "You cannot use a weapon to a enemy that has higher rank than the last enemy that you've killed with that weapon.",
+                    "",
+                    "2. Using your bare fist",
+                    "The damage you take is equal to the enemy rank.",
+                    "It does not dull your weapon, so use it wisely.",
+                    "",
+                    "## J-A of Diamonds",
+                    "",
+                    "(Only in Scoundrel+)",
+                    "These are repair tools. When used, it will remove the last enemy that you've killed from your weapon.",
+                    "",
+                    "## J-A of Hearts",
+                    "",
+                    "(Only in Scoundrel+)",
+                    "These are poison potions. When used, you will take 10 damage.",
+                    "",
+                    "Note that you may only drink 1 potion in a room.",
+                    "Any potions consumed after will fizzle and have no effect.",
+                    "",
+                    "# Score",
+                    "",
+                    "When you interact with all of the cards without reaching HP 0, you win.",
+                    "The score becomes your remaining HP.",
+                    "If the last card you used was a health potion, it's rank is added up to your score.",
+                    "The maximum score that you can achieve is 30.",
+                    "",
+                    "If you reach HP 0, you lose.",
+                    "The score becomes the minus of the sum of the enemies that you didn't kill.",
                 ],
                 options: [
                     {
