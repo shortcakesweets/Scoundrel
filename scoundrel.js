@@ -1,6 +1,6 @@
 /* global window, document */
 
-function createScoundrelApp({ outputEl, inputEl }) {
+function createScoundrelApp({ outputEl, inputEl = null }) {
     const MAX_HP = 20;
     const SUIT = {
         hearts: "hearts",
@@ -168,7 +168,7 @@ function createScoundrelApp({ outputEl, inputEl }) {
             }
         }
         window.scrollTo(0, 0);
-        inputEl.focus();
+        if (inputEl) inputEl.focus();
     }
 
     const app = {
@@ -208,7 +208,7 @@ function createScoundrelApp({ outputEl, inputEl }) {
                 lines: [
                     "Scoundrel",
                     "",
-                    "Input the option index or click the option.",
+                    "Click an option.",
                 ],
                 options: [
                     {

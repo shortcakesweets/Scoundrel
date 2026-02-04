@@ -7,7 +7,6 @@
     --red: #ff3b30;
     --status: #9aa0a6;
     --border: rgba(255, 255, 255, 0.18);
-    --bar-height: 44px;
     --pad: 14px;
     --font:
         ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
@@ -33,9 +32,7 @@ body {
 #terminal {
     min-height: 100vh;
     padding: var(--pad);
-    padding-bottom: calc(
-        var(--bar-height) + var(--pad) + env(safe-area-inset-bottom, 0px)
-    );
+    padding-bottom: calc(var(--pad) + env(safe-area-inset-bottom, 0px));
 }
 
 #output {
@@ -113,41 +110,6 @@ body[data-colored-text="on"] .optionBtn.disabled {
 
 body[data-colored-text="on"] .optionBtn.disabled .optionKey {
     color: var(--fg-dim);
-}
-
-#commandBar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: var(--bar-height);
-    padding: 8px var(--pad);
-    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--bg);
-    border-top: 1px solid var(--border);
-}
-
-#prompt {
-    flex: 0 0 auto;
-    user-select: none;
-}
-
-#commandInput {
-    flex: 1 1 auto;
-    width: 100%;
-    border: none;
-    outline: none;
-    background: transparent;
-    color: var(--fg);
-    font: inherit;
-    padding: 0;
-}
-
-#commandInput::placeholder {
-    color: rgba(0, 255, 102, 0.45);
 }
 
 .srOnly {
