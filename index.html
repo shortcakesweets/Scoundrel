@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Scoundrel</title>
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <main id="terminal" aria-label="Terminal">
+            <div id="output" aria-live="polite">
+                <div class="line">Welcome.</div>
+                <div class="line dim">Type a command and press Enter.</div>
+            </div>
+        </main>
+
+        <form id="commandBar" autocomplete="off">
+            <span id="prompt" aria-hidden="true">&gt;</span>
+            <label class="srOnly" for="commandInput">Command</label>
+            <input
+                id="commandInput"
+                type="text"
+                inputmode="text"
+                spellcheck="false"
+                autocomplete="off"
+                autocapitalize="off"
+                autofocus />
+        </form>
+
+        <script src="scoundrel.js"></script>
+        <script src="app.js"></script>
+    </body>
+</html>

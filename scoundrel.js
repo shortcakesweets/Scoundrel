@@ -1,0 +1,649 @@
+/* global window, document */
+
+function createScoundrelApp({ outputEl, inputEl }) {
+    const MAX_HP = 20;
+    const SUIT = {
+        hearts: "hearts",
+        diamonds: "diamonds",
+        clubs: "clubs",
+        spades: "spades",
+    };
+
+    const SUIT_SYMBOL = {
+        [SUIT.hearts]: "♥",
+        [SUIT.diamonds]: "◆",
+        [SUIT.clubs]: "♣",
+        [SUIT.spades]: "♠",
+    };
+
+    function applyColoredTextSetting(enabled) {
+        document.body.dataset.coloredText = enabled ? "on" : "off";
+    }
+
+    function rankLabel(rank) {
+        if (rank === 14) return "A";
+        if (rank === 13) return "K";
+        if (rank === 12) return "Q";
+        if (rank === 11) return "J";
+        return String(rank);
+    }
+
+    function cardText(card) {
+        return `${rankLabel(card.rank)}${SUIT_SYMBOL[card.suit]}`;
+    }
+
+    function elSpan(text, className) {
+        const el = document.createElement("span");
+        if (className) el.className = className;
+        el.textContent = text;
+        return el;
+    }
+
+    function isEnemy(card) {
+        return card.suit === SUIT.spades || card.suit === SUIT.clubs;
+    }
+
+    function isWeapon(card) {
+        return card.suit === SUIT.diamonds;
+    }
+
+    function isPotion(card) {
+        return card.suit === SUIT.hearts;
+    }
+
+    function cardSpan(card) {
+        if (!card) return elSpan("-", "card");
+        let kind = "enemy";
+        if (isWeapon(card)) kind = "weapon";
+        else if (isPotion(card)) kind = "potion";
+        return elSpan(cardText(card), `card ${kind}`);
+    }
+
+    function shuffleInPlace(array) {
+        for (let i = array.length - 1; i > 0; i -= 1) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+
+    function createDeck() {
+        const deck = [];
+        const suits = [SUIT.hearts, SUIT.diamonds, SUIT.clubs, SUIT.spades];
+        for (const suit of suits) {
+            for (let rank = 2; rank <= 14; rank += 1) {
+                if (
+                    suit === SUIT.hearts &&
+                    (rank === 11 || rank === 12 || rank === 13 || rank === 14)
+                ) {
+                    continue; // remove A,J,Q,K of Hearts
+                }
+                deck.push({ suit, rank });
+            }
+        }
+        // No jokers in this constructed deck; instruction says to remove them anyway.
+        shuffleInPlace(deck);
+        return deck;
+    }
+
+    function drawTop(deck) {
+        return deck.pop() ?? null;
+    }
+
+    function clearOutput() {
+        outputEl.innerHTML = "";
+    }
+
+    function addLine(text, className) {
+        const line = document.createElement("div");
+        line.className = className ? `line ${className}` : "line";
+        line.textContent = text;
+        outputEl.appendChild(line);
+    }
+
+    function addLineParts(parts, className) {
+        const line = document.createElement("div");
+        line.className = className ? `line ${className}` : "line";
+        for (const part of parts) {
+            if (typeof part === "string") {
+                line.appendChild(document.createTextNode(part));
+            } else if (part instanceof Node) {
+                line.appendChild(part);
+            } else if (part && typeof part === "object") {
+                line.appendChild(elSpan(part.text ?? "", part.className));
+            }
+        }
+        outputEl.appendChild(line);
+    }
+
+    function addSpacer() {
+        const line = document.createElement("div");
+        line.className = "line";
+        line.textContent = "";
+        outputEl.appendChild(line);
+    }
+
+    function addOption(key, label, onSelect, enabled = true) {
+        addOptionParts(key, [document.createTextNode(label)], onSelect, enabled);
+    }
+
+    function addOptionParts(key, labelParts, onSelect, enabled = true) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = enabled ? "optionBtn" : "optionBtn disabled";
+        btn.disabled = !enabled;
+        btn.dataset.key = String(key);
+        btn.appendChild(elSpan(`[${key}]`, "optionKey"));
+        if (labelParts.length) btn.appendChild(document.createTextNode(" "));
+        for (const part of labelParts) {
+            if (typeof part === "string") btn.appendChild(document.createTextNode(part));
+            else btn.appendChild(part);
+        }
+        if (enabled) btn.addEventListener("click", onSelect);
+        outputEl.appendChild(btn);
+    }
+
+    function renderScreen({ lines = [], options = [], dimLines = [] }) {
+        clearOutput();
+        for (const l of lines) {
+            if (typeof l === "string") addLine(l);
+            else if (l && typeof l === "object" && Array.isArray(l.parts))
+                addLineParts(l.parts, l.className);
+        }
+        for (const l of dimLines) addLine(l, "dim");
+        if (options.length) addSpacer();
+        for (const opt of options) {
+            if (opt.spacer) {
+                addSpacer();
+                continue;
+            }
+            if (opt.labelParts) {
+                addOptionParts(
+                    opt.key,
+                    opt.labelParts,
+                    opt.onSelect,
+                    opt.enabled !== false
+                );
+            } else {
+                addOption(opt.key, opt.label, opt.onSelect, opt.enabled !== false);
+            }
+        }
+        window.scrollTo(0, 0);
+        inputEl.focus();
+    }
+
+    const app = {
+        screenOptions: new Map(),
+        mode: "menu",
+        game: null,
+        pending: null, // e.g. { kind: 'enemyChoice', slotIndex, enemyCard }
+        settings: { coloredText: true },
+
+        setScreen(screenModel) {
+            applyColoredTextSetting(this.settings.coloredText);
+            this.screenOptions = new Map();
+            for (const opt of screenModel.options ?? []) {
+                if (opt && !opt.spacer) this.screenOptions.set(String(opt.key), opt);
+            }
+            renderScreen(screenModel);
+        },
+
+        handleInput(raw) {
+            const key = String(raw ?? "").trim();
+            if (!key) return;
+            const opt = this.screenOptions.get(key);
+            if (!opt || opt.enabled === false) return;
+            opt.onSelect();
+        },
+
+        start() {
+            this.showMenu();
+        },
+
+        showMenu() {
+            this.mode = "menu";
+            this.game = null;
+            this.pending = null;
+
+            this.setScreen({
+                lines: [
+                    "Scoundrel",
+                    "",
+                    "Input the option index or click the option.",
+                ],
+                options: [
+                    {
+                        key: "1",
+                        label: "Start game",
+                        onSelect: () => this.startGame(),
+                    },
+                    {
+                        key: "2",
+                        label: "How to play",
+                        onSelect: () => this.showHowTo(),
+                    },
+                    {
+                        key: "3",
+                        label: "Option",
+                        onSelect: () => this.showOptions(),
+                    },
+                ],
+            });
+        },
+
+        showOptions() {
+            this.mode = "options";
+            this.pending = null;
+
+            const enabled = this.settings.coloredText;
+            this.setScreen({
+                lines: ["Options"],
+                options: [
+                    {
+                        key: "1",
+                        label: `Colored text (${enabled ? "Enabled" : "Disabled"})`,
+                        onSelect: () => {
+                            this.settings.coloredText = !this.settings.coloredText;
+                            this.showOptions();
+                        },
+                    },
+                    { spacer: true },
+                    {
+                        key: "0",
+                        label: "Return to main menu",
+                        onSelect: () => this.showMenu(),
+                    },
+                ],
+            });
+        },
+
+        showHowTo() {
+            this.mode = "howto";
+            this.pending = null;
+            this.setScreen({
+                lines: [
+                    "How to play",
+                    "",
+                    "- Diamonds (◆): weapons (equip 1).",
+                    "- Spades/Clubs (♠/♣): enemies.",
+                    "- Hearts (♥): potions (heal once per room, max 20).",
+                    "",
+                    "In a room, you may flee once (not twice in a row),",
+                    "or fight by interacting with 3 cards; the 4th carries over.",
+                    "",
+                    "Enemies:",
+                    "- Weapon: dmg = max(0, enemy - weapon).",
+                    "- Fist: dmg = enemy (does not affect weapon stack).",
+                    "- Weapon can only be used on an enemy with rank lower than",
+                    "  the last enemy killed with that weapon.",
+                ],
+                options: [
+                    {
+                        key: "1",
+                        label: "Back",
+                        onSelect: () => this.showMenu(),
+                    },
+                ],
+            });
+        },
+
+        startGame() {
+            const deck = createDeck();
+            const table = [
+                drawTop(deck),
+                drawTop(deck),
+                drawTop(deck),
+                drawTop(deck),
+            ];
+
+            this.game = {
+                room: 1,
+                hp: MAX_HP,
+                deck,
+                table,
+                weapon: null, // card
+                weaponKills: [], // enemy cards killed using weapon
+                potionUsedThisRoom: false,
+                interactionsThisRoom: 0,
+                fledLastRoom: false,
+            };
+            this.pending = null;
+            this.mode = "room";
+            this.showRoom(["You enter a dark room filled with monsters..."]);
+        },
+
+        statusLines() {
+            const g = this.game;
+            const weaponLine = (() => {
+                if (!g.weapon) return { parts: ["Weapon: -"], className: "status" };
+                const parts = ["Weapon: ", cardSpan(g.weapon)];
+                if (g.weaponKills.length > 0) {
+                    parts.push(" (");
+                    for (let i = 0; i < g.weaponKills.length; i += 1) {
+                        if (i > 0) parts.push(" > ");
+                        parts.push(cardSpan(g.weaponKills[i]));
+                    }
+                    parts.push(")");
+                }
+                return { parts, className: "status" };
+            })();
+
+            return [
+                { parts: [`Room ${g.room}`], className: "status" },
+                { parts: [`HP: ${g.hp}`], className: "status" },
+                { parts: [`DK: ${g.deck.length}`], className: "status" },
+                weaponLine,
+            ];
+        },
+
+        showRoom(messageLines = []) {
+            const g = this.game;
+            if (!g) return this.showMenu();
+
+            this.mode = "room";
+            this.pending = null;
+
+            const lines = [...this.statusLines(), "", ...messageLines, ""];
+
+            const options = [];
+
+            // Flee is only allowed immediately upon entering a room (before any interactions)
+            // and not two rooms in a row.
+            const canFlee = g.interactionsThisRoom === 0 && !g.fledLastRoom;
+            if (g.interactionsThisRoom === 0) {
+                options.push({
+                    key: "0",
+                    label: canFlee ? "Flee" : "Flee (unavailable)",
+                    enabled: canFlee,
+                    onSelect: () => this.fleeRoom(),
+                });
+            }
+
+            for (let i = 0; i < 4; i += 1) {
+                const card = g.table[i];
+                const labelParts = card ? [cardSpan(card)] : [elSpan("-", "card")];
+                options.push({
+                    key: String(i + 1),
+                    labelParts,
+                    enabled: Boolean(card),
+                    onSelect: () => this.interactWithSlot(i),
+                });
+            }
+
+            this.setScreen({ lines, options });
+        },
+
+        fleeRoom() {
+            const g = this.game;
+            if (!g) return this.showMenu();
+            if (g.interactionsThisRoom !== 0) return;
+            if (g.fledLastRoom) return;
+
+            // Put the current room's cards at the bottom of the deck.
+            // Deck top is the end of the array; bottom is the start.
+            for (let i = 3; i >= 0; i -= 1) {
+                g.deck.unshift(g.table[i]);
+            }
+
+            // Draw a fresh room.
+            g.table = [
+                drawTop(g.deck),
+                drawTop(g.deck),
+                drawTop(g.deck),
+                drawTop(g.deck),
+            ];
+            g.interactionsThisRoom = 0;
+            g.potionUsedThisRoom = false;
+            g.fledLastRoom = true;
+
+            this.showRoom(["You flee... and enter a different room."]);
+        },
+
+        interactWithSlot(slotIndex) {
+            const g = this.game;
+            if (!g) return this.showMenu();
+
+            const card = g.table[slotIndex];
+            if (!card) return;
+
+            if (isEnemy(card)) {
+                return this.showEnemyChoice(slotIndex, card);
+            }
+            if (isWeapon(card)) {
+                return this.pickUpWeapon(slotIndex, card);
+            }
+            if (isPotion(card)) {
+                return this.drinkPotion(slotIndex, card);
+            }
+
+            // Should be unreachable.
+            return this.showRoom(["Nothing happens."]);
+        },
+
+        showEnemyChoice(slotIndex, enemyCard) {
+            const g = this.game;
+            this.mode = "enemyChoice";
+            this.pending = { kind: "enemyChoice", slotIndex, enemyCard };
+
+            const lines = [
+                ...this.statusLines(),
+                "",
+                { parts: ["You stare at the ", cardSpan(enemyCard), ". It stares back."] },
+                "You use your...",
+            ];
+
+            const weaponAllowed = (() => {
+                if (!g.weapon) return false;
+                if (g.weaponKills.length === 0) return true;
+                const last = g.weaponKills[g.weaponKills.length - 1];
+                return enemyCard.rank < last.rank;
+            })();
+
+            const weaponLabelParts = g.weapon
+                ? [elSpan("Weapon (", "optionText"), cardSpan(g.weapon), elSpan(")", "optionText")]
+                : [document.createTextNode("Weapon (-)")];
+
+            this.setScreen({
+                lines,
+                options: [
+                    {
+                        key: "1",
+                        labelParts: weaponAllowed
+                            ? weaponLabelParts
+                            : [...weaponLabelParts, elSpan(" (unavailable)", "dim")],
+                        enabled: weaponAllowed,
+                        onSelect: () =>
+                            this.fightEnemy(slotIndex, enemyCard, "weapon"),
+                    },
+                    {
+                        key: "2",
+                        label: "Fist",
+                        onSelect: () =>
+                            this.fightEnemy(slotIndex, enemyCard, "fist"),
+                    },
+                    {
+                        key: "9",
+                        label: "Back",
+                        onSelect: () => this.showRoom([]),
+                    },
+                ],
+            });
+        },
+
+        fightEnemy(slotIndex, enemyCard, method) {
+            const g = this.game;
+            if (!g) return this.showMenu();
+
+            let damage = enemyCard.rank;
+            if (method === "weapon") {
+                const weaponRank = g.weapon?.rank ?? 0;
+                damage = Math.max(0, enemyCard.rank - weaponRank);
+                g.weaponKills.push(enemyCard);
+            }
+
+            g.hp = Math.max(0, g.hp - damage);
+            g.table[slotIndex] = null;
+
+            if (g.hp <= 0) {
+                return this.finishGameDeath();
+            }
+
+            const msg =
+                damage === 0
+                    ? [
+                          `You defeat the ${cardText(enemyCard)} without taking damage.`,
+                      ]
+                    : [
+                          `You defeat the ${cardText(enemyCard)} and take ${damage} damage.`,
+                      ];
+            this.afterInteraction(msg);
+        },
+
+        pickUpWeapon(slotIndex, weaponCard) {
+            const g = this.game;
+            if (!g) return this.showMenu();
+
+            g.weapon = weaponCard;
+            g.weaponKills = [];
+            g.table[slotIndex] = null;
+
+            this.afterInteraction([
+                "You pick up the shiny new weapon and discard the old one.",
+            ]);
+        },
+
+        drinkPotion(slotIndex, potionCard) {
+            const g = this.game;
+            if (!g) return this.showMenu();
+
+            g.table[slotIndex] = null;
+
+            if (g.potionUsedThisRoom) {
+                this.afterInteraction([
+                    "The potion fizzles. (Heal already used this room.)",
+                ]);
+                return;
+            }
+
+            g.potionUsedThisRoom = true;
+            const before = g.hp;
+            g.hp = Math.min(MAX_HP, g.hp + potionCard.rank);
+            const healed = g.hp - before;
+
+            this.afterInteraction([
+                healed > 0 ? "You feel healthier." : "You already feel fine.",
+            ]);
+        },
+
+        afterInteraction(messageLines) {
+            const g = this.game;
+            if (!g) return this.showMenu();
+
+            g.interactionsThisRoom += 1;
+
+            // After 3 interactions, advance to the next room (keep the remaining card).
+            if (g.interactionsThisRoom >= 3) {
+                const need = 3;
+                if (g.deck.length < need) {
+                    return this.finishGameClear();
+                }
+
+                for (let i = 0; i < 4; i += 1) {
+                    if (g.table[i] === null) g.table[i] = drawTop(g.deck);
+                }
+
+                g.room += 1;
+                g.interactionsThisRoom = 0;
+                g.potionUsedThisRoom = false;
+                g.fledLastRoom = false;
+
+                this.showRoom([...messageLines, "You enter the next room..."]);
+                return;
+            }
+
+            this.showRoom(messageLines);
+        },
+
+        finishGameDeath() {
+            const g = this.game;
+            const remainingEnemyRankSum = g.deck
+                .filter((c) => c && isEnemy(c))
+                .reduce((sum, c) => sum + c.rank, 0);
+            const score = -1 * remainingEnemyRankSum;
+
+            this.mode = "gameOver";
+            this.setScreen({
+                lines: [
+                    "Game over",
+                    "",
+                    "You have fallen.",
+                    `Score: ${score}`,
+                    "",
+                    `(Remaining enemy ranks in deck: ${remainingEnemyRankSum})`,
+                ],
+                options: [
+                    {
+                        key: "1",
+                        label: "Main menu",
+                        onSelect: () => this.showMenu(),
+                    },
+                    {
+                        key: "2",
+                        label: "Restart",
+                        onSelect: () => this.startGame(),
+                    },
+                ],
+            });
+        },
+
+        finishGameClear() {
+            const g = this.game;
+            const remaining = g.table.filter(Boolean);
+            const lastRemainingCard =
+                remaining.length === 1 ? remaining[0] : null;
+            const bonus =
+                lastRemainingCard && isPotion(lastRemainingCard)
+                    ? lastRemainingCard.rank
+                    : 0;
+            const score = g.hp + bonus;
+            const bonusLine = bonus
+                ? {
+                      parts: [
+                          "Last card bonus: +",
+                          String(bonus),
+                          " (",
+                          cardSpan(lastRemainingCard),
+                          ")",
+                      ],
+                  }
+                : "Last card bonus: +0";
+
+            this.mode = "gameOver";
+            this.setScreen({
+                lines: [
+                    "Cleared!",
+                    "",
+                    `HP remaining: ${g.hp}`,
+                    bonusLine,
+                    `Score: ${score}`,
+                ],
+                options: [
+                    {
+                        key: "1",
+                        label: "Main menu",
+                        onSelect: () => this.showMenu(),
+                    },
+                    {
+                        key: "2",
+                        label: "Restart",
+                        onSelect: () => this.startGame(),
+                    },
+                ],
+            });
+        },
+    };
+
+    return app;
+}
+
+// Expose as a global for simple script-tag usage.
+window.createScoundrelApp = createScoundrelApp;
