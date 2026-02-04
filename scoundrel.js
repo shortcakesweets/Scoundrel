@@ -311,13 +311,25 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
         },
 
         startGame() {
-            const deck = createDeck();
-            const table = [
+            // Ensure at least 1 weapon is present in the first room.
+            let deck = createDeck();
+            let table = [
                 drawTop(deck),
                 drawTop(deck),
                 drawTop(deck),
                 drawTop(deck),
             ];
+            let safety = 0;
+            while (!table.some((c) => c && isWeapon(c)) && safety < 200) {
+                deck = createDeck();
+                table = [
+                    drawTop(deck),
+                    drawTop(deck),
+                    drawTop(deck),
+                    drawTop(deck),
+                ];
+                safety += 1;
+            }
 
             this.game = {
                 room: 1,
@@ -640,9 +652,13 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
 
         finishGameDeath() {
             const g = this.game;
-            const remainingEnemyRankSum = g.deck
-                .filter((c) => c && isEnemy(c))
-                .reduce((sum, c) => sum + c.rank, 0);
+            const remainingEnemyRankSum =
+                g.deck
+                    .filter((c) => c && isEnemy(c))
+                    .reduce((sum, c) => sum + c.rank, 0) +
+                g.table
+                    .filter((c) => c && isEnemy(c))
+                    .reduce((sum, c) => sum + c.rank, 0);
             const score = -1 * remainingEnemyRankSum;
 
             this.mode = "gameOver";
@@ -653,7 +669,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                     "You have fallen.",
                     `Score: ${score}`,
                     "",
-                    `(Remaining enemy ranks in deck: ${remainingEnemyRankSum})`,
+                    `(Remaining enemy ranks: ${remainingEnemyRankSum})`,
                 ],
                 options: [
                     {
