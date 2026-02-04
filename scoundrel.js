@@ -560,14 +560,26 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             if (method === "weapon") {
                 const weaponRank = g.weapon?.rank ?? 0;
                 damage = Math.max(0, enemyCard.rank - weaponRank);
-                g.weaponKills.push(enemyCard);
             }
 
-            g.hp = Math.max(0, g.hp - damage);
+            const hpBefore = g.hp;
+            const hpAfter = hpBefore - damage;
+
+            if (hpAfter < 0) {
+                // Not enough HP: you fall before killing the enemy.
+                g.hp = 0;
+                return this.finishGameDeath();
+            }
+
+            // Enemy is defeated in all non-negative outcomes.
+            if (method === "weapon") g.weaponKills.push(enemyCard);
+            g.hp = Math.max(0, hpAfter);
             g.table[slotIndex] = null;
 
             if (g.hp <= 0) {
-                return this.finishGameDeath();
+                return this.finishGameDeath([
+                    "You strike the final blow and fall with your foe.",
+                ]);
             }
 
             const msg =
@@ -691,7 +703,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             this.showRoom(messageLines);
         },
 
-        finishGameDeath() {
+        finishGameDeath(extraLines = null) {
             const g = this.game;
             const remainingEnemyRankSum =
                 g.deck
@@ -708,6 +720,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                     "Game over",
                     "",
                     "You have fallen.",
+                    ...(extraLines ?? []),
                     `Score: ${score}`,
                     "",
                     `(Remaining enemy ranks: ${remainingEnemyRankSum})`,
