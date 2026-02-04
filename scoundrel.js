@@ -381,7 +381,8 @@ function createScoundrelApp({ outputEl, inputEl }) {
             // Put the current room's cards at the bottom of the deck.
             // Deck top is the end of the array; bottom is the start.
             for (let i = 3; i >= 0; i -= 1) {
-                g.deck.unshift(g.table[i]);
+                const card = g.table[i];
+                if (card) g.deck.unshift(card);
             }
 
             // Draw a fresh room.
@@ -540,15 +541,22 @@ function createScoundrelApp({ outputEl, inputEl }) {
 
             g.interactionsThisRoom += 1;
 
-            // After 3 interactions, advance to the next room (keep the remaining card).
-            if (g.interactionsThisRoom >= 3) {
-                const need = 3;
-                if (g.deck.length < need) {
-                    return this.finishGameClear();
+            const hasAnyTableCard = g.table.some(Boolean);
+
+            // Room ends after 3 interactions, or earlier if the room runs out of cards
+            // (possible near end-of-deck).
+            if (g.interactionsThisRoom >= 3 || !hasAnyTableCard) {
+                let drew = 0;
+                for (let i = 0; i < 4; i += 1) {
+                    if (g.table[i] === null && g.deck.length > 0) {
+                        g.table[i] = drawTop(g.deck);
+                        if (g.table[i]) drew += 1;
+                    }
                 }
 
-                for (let i = 0; i < 4; i += 1) {
-                    if (g.table[i] === null) g.table[i] = drawTop(g.deck);
+                // If we can't draw any more cards to form the next room, the run ends.
+                if (drew === 0 && g.deck.length === 0) {
+                    return this.finishGameClear();
                 }
 
                 g.room += 1;
