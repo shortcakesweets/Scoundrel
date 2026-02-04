@@ -77,6 +77,12 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                 ) {
                     continue; // remove A,J,Q,K of Hearts
                 }
+                if (
+                    suit === SUIT.diamonds &&
+                    (rank === 11 || rank === 12 || rank === 13 || rank === 14)
+                ) {
+                    continue; // remove A,J,Q,K of Diamonds
+                }
                 deck.push({ suit, rank });
             }
         }
