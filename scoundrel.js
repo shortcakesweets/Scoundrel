@@ -263,18 +263,28 @@ function createScoundrelApp({ outputEl, inputEl }) {
                 lines: [
                     "How to play",
                     "",
-                    "- Diamonds (◆): weapons (equip 1).",
-                    "- Spades/Clubs (♠/♣): enemies.",
-                    "- Hearts (♥): potions (heal once per room, max 20).",
+                    "You are a scoundrel exploring rooms filled with enemies...",
                     "",
-                    "In a room, you may flee once (not twice in a row),",
-                    "or fight by interacting with 3 cards; the 4th carries over.",
+                    "Card types:",
+                    "- Diamonds (◆): Weapons.",
+                    "   You may equip only one weapon at a time.",
+                    "   If you take one up, the old one will be discarded.",
+                    "   Weapons can only be used on enemies with rank lower",
+                    "   than the last enemy killed with that weapon.",
+                    "- Spades/Clubs (♠/♣): Enemies.",
+                    "- Hearts (♥): Health Potions",
+                    "   Each room, you may use only one potion. Second one fizzles.",
+                    "   You cannot heal beyond your starting HP (20).",
                     "",
                     "Enemies:",
-                    "- Weapon: dmg = max(0, enemy - weapon).",
-                    "- Fist: dmg = enemy (does not affect weapon stack).",
-                    "- Weapon can only be used on an enemy with rank lower than",
-                    "  the last enemy killed with that weapon.",
+                    "- Weapon: takes damage of max(0, enemy - weapon).",
+                    "- Fist: takes damage of enemy rank, but does not affect weapon stack.",
+                    "",
+                    "Gameplay:",
+                    "  In a room, you may flee once (not twice in a row),",
+                    "  or fight by interacting with 3 cards; the 4th carries over.",
+                    "  You die if your remaining hp is 0",
+                    "  You clear the game if you run out of cards to draw a new room.",
                 ],
                 options: [
                     {
@@ -503,12 +513,15 @@ function createScoundrelApp({ outputEl, inputEl }) {
             const g = this.game;
             if (!g) return this.showMenu();
 
+            const hadWeapon = Boolean(g.weapon);
             g.weapon = weaponCard;
             g.weaponKills = [];
             g.table[slotIndex] = null;
 
             this.afterInteraction([
-                "You pick up the shiny new weapon and discard the old one.",
+                hadWeapon
+                    ? "You pick up the shiny new weapon and discard the old one."
+                    : "You pick up the shiny new weapon.",
             ]);
         },
 

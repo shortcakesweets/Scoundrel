@@ -11,7 +11,3 @@ formEl.addEventListener("submit", (e) => {
     inputEl.value = "";
     scoundrel.handleInput(raw);
 });
-
-// Keep focus on the command line (feels terminal-like).
-window.addEventListener("pointerdown", () => inputEl.focus());
-window.addEventListener("keydown", () => inputEl.focus(), { capture: true });
