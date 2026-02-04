@@ -44,17 +44,31 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
     }
 
     function isWeapon(card) {
-        return card.suit === SUIT.diamonds;
+        return card.suit === SUIT.diamonds && card.rank <= 10;
     }
 
     function isPotion(card) {
-        return card.suit === SUIT.hearts;
+        return card.suit === SUIT.hearts && card.rank <= 10;
+    }
+
+    function isRepairToolkit(card) {
+        return card.suit === SUIT.diamonds && card.rank >= 11;
+    }
+
+    function isPoisonPotion(card) {
+        return card.suit === SUIT.hearts && card.rank >= 11;
+    }
+
+    function isAnyPotion(card) {
+        return isPotion(card) || isPoisonPotion(card);
     }
 
     function cardSpan(card) {
         if (!card) return elSpan("-", "card");
         let kind = "enemy";
-        if (isWeapon(card)) kind = "weapon";
+        if (isRepairToolkit(card)) kind = "toolkit";
+        else if (isWeapon(card)) kind = "weapon";
+        else if (isPoisonPotion(card)) kind = "poison";
         else if (isPotion(card)) kind = "potion";
         return elSpan(cardText(card), `card ${kind}`);
     }
@@ -71,18 +85,6 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
         const suits = [SUIT.hearts, SUIT.diamonds, SUIT.clubs, SUIT.spades];
         for (const suit of suits) {
             for (let rank = 2; rank <= 14; rank += 1) {
-                if (
-                    suit === SUIT.hearts &&
-                    (rank === 11 || rank === 12 || rank === 13 || rank === 14)
-                ) {
-                    continue; // remove A,J,Q,K of Hearts
-                }
-                if (
-                    suit === SUIT.diamonds &&
-                    (rank === 11 || rank === 12 || rank === 13 || rank === 14)
-                ) {
-                    continue; // remove A,J,Q,K of Diamonds
-                }
                 deck.push({ suit, rank });
             }
         }
@@ -272,15 +274,21 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                     "You are a scoundrel exploring rooms filled with enemies...",
                     "",
                     "Card types:",
-                    "- Diamonds (◆): Weapons.",
+                    "- Diamonds 2-10 (◆): Weapons.",
                     "   You may equip only one weapon at a time.",
                     "   If you take one up, the old one will be discarded.",
                     "   Weapons can only be used on enemies with rank lower",
                     "   than the last enemy killed with that weapon.",
+                    "- Diamonds J/Q/K/A (◆): Repair Toolkits.",
+                    "   Removes the top enemy from your weapon's kill stack.",
                     "- Spades/Clubs (♠/♣): Enemies.",
-                    "- Hearts (♥): Health Potions",
+                    "- Hearts 2-10(♥): Health Potions",
                     "   Each room, you may use only one potion. Second one fizzles.",
                     "   You cannot heal beyond your starting HP (20).",
+                    "   J/Q/K/A of Hearts are Poison Potions (damage).",
+                    "   J/Q/K/A of Diamonds are Repair Toolkits (pop weapon stack).",
+                    "- Hearts J/Q/K/A (♥): Poison Potions.",
+                    "   Deal damage to you when used. Each room, you may use only one potion.",
                     "",
                     "Enemies:",
                     "- Weapon: takes damage of max(0, enemy - weapon).",
@@ -321,6 +329,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                 potionUsedThisRoom: false,
                 interactionsThisRoom: 0,
                 fledLastRoom: false,
+                lastUsedCard: null,
             };
             this.pending = null;
             this.mode = "room";
@@ -357,15 +366,6 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
 
             this.mode = "room";
             this.pending = null;
-
-            const remainingCards = g.table.filter(Boolean);
-            if (
-                g.deck.length === 0 &&
-                remainingCards.length === 1 &&
-                isPotion(remainingCards[0])
-            ) {
-                return this.finishGameClear(remainingCards[0]);
-            }
 
             const lines = [...this.statusLines(), "", ...messageLines, ""];
 
@@ -434,10 +434,13 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             if (isEnemy(card)) {
                 return this.showEnemyChoice(slotIndex, card);
             }
+            if (isRepairToolkit(card)) {
+                return this.useRepairToolkit(slotIndex, card);
+            }
             if (isWeapon(card)) {
                 return this.pickUpWeapon(slotIndex, card);
             }
-            if (isPotion(card)) {
+            if (isAnyPotion(card)) {
                 return this.drinkPotion(slotIndex, card);
             }
 
@@ -499,6 +502,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             const g = this.game;
             if (!g) return this.showMenu();
 
+            g.lastUsedCard = enemyCard;
             let damage = enemyCard.rank;
             if (method === "weapon") {
                 const weaponRank = g.weapon?.rank ?? 0;
@@ -529,6 +533,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             if (!g) return this.showMenu();
 
             const hadWeapon = Boolean(g.weapon);
+            g.lastUsedCard = weaponCard;
             g.weapon = weaponCard;
             g.weaponKills = [];
             g.table[slotIndex] = null;
@@ -540,27 +545,61 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             ]);
         },
 
+        useRepairToolkit(slotIndex, toolkitCard) {
+            const g = this.game;
+            if (!g) return this.showMenu();
+
+            g.lastUsedCard = toolkitCard;
+            g.table[slotIndex] = null;
+
+            if (!g.weapon || g.weaponKills.length === 0) {
+                this.afterInteraction([
+                    `You use ${cardText(toolkitCard)}, but nothing happens.`,
+                ]);
+                return;
+            }
+
+            const removed = g.weaponKills.pop();
+            this.afterInteraction([
+                `You use ${cardText(toolkitCard)} to repair your weapon.`,
+                `Removed from weapon stack: ${cardText(removed)}.`,
+            ]);
+        },
+
         drinkPotion(slotIndex, potionCard) {
             const g = this.game;
             if (!g) return this.showMenu();
 
+            g.lastUsedCard = potionCard;
             g.table[slotIndex] = null;
+
+            const isLastCardOverall = g.deck.length === 0 && !g.table.some(Boolean);
+            if (isLastCardOverall && isPotion(potionCard)) {
+                // Bonus system: when the last used card is a healing potion, it adds bonus points.
+                return this.finishGameClear(potionCard);
+            }
 
             if (g.potionUsedThisRoom) {
                 this.afterInteraction([
-                    "The potion fizzles. (Heal already used this room.)",
+                    "The potion fizzles. (Potion already used this room.)",
                 ]);
                 return;
             }
 
             g.potionUsedThisRoom = true;
+            if (isPoisonPotion(potionCard)) {
+                const damage = potionCard.rank;
+                g.hp = Math.max(0, g.hp - damage);
+                if (g.hp <= 0) return this.finishGameDeath();
+                this.afterInteraction([`The poison burns. You take ${damage} damage.`]);
+                return;
+            }
+
             const before = g.hp;
             g.hp = Math.min(MAX_HP, g.hp + potionCard.rank);
             const healed = g.hp - before;
 
-            this.afterInteraction([
-                healed > 0 ? "You feel healthier." : "You already feel fine.",
-            ]);
+            this.afterInteraction([healed > 0 ? "You feel healthier." : "You already feel fine."]);
         },
 
         afterInteraction(messageLines) {
@@ -568,6 +607,11 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             if (!g) return this.showMenu();
 
             g.interactionsThisRoom += 1;
+
+            // The game ends when the last card is used (no cards left anywhere).
+            if (g.deck.length === 0 && !g.table.some(Boolean)) {
+                return this.finishGameClear();
+            }
 
             const hasAnyTableCard = g.table.some(Boolean);
 
@@ -580,11 +624,6 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                         g.table[i] = drawTop(g.deck);
                         if (g.table[i]) drew += 1;
                     }
-                }
-
-                // If we can't draw any more cards to form the next room, the run ends.
-                if (drew === 0 && g.deck.length === 0) {
-                    return this.finishGameClear();
                 }
 
                 g.room += 1;
@@ -633,11 +672,8 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
 
         finishGameClear(bonusCardOverride = null) {
             const g = this.game;
-            const remaining = g.table.filter(Boolean);
-            const lastRemainingCard =
-                bonusCardOverride ?? (remaining.length === 1 ? remaining[0] : null);
-            const bonus =
-                lastRemainingCard && isPotion(lastRemainingCard) ? lastRemainingCard.rank : 0;
+            const bonusCard = bonusCardOverride;
+            const bonus = bonusCard && isPotion(bonusCard) ? bonusCard.rank : 0;
             const score = g.hp + bonus;
             const bonusLine = bonus
                 ? {
@@ -645,7 +681,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                           "Last card bonus: +",
                           String(bonus),
                           " (",
-                          cardSpan(lastRemainingCard),
+                          cardSpan(bonusCard),
                           ")",
                       ],
                   }

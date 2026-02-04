@@ -5,6 +5,8 @@
     --fg-dim: rgba(255, 255, 255, 0.7);
     --green: #00ff66;
     --red: #ff3b30;
+    --yellow: #ffd60a;
+    --purple: #bf5af2;
     --status: #9aa0a6;
     --border: rgba(255, 255, 255, 0.18);
     --pad: 14px;
@@ -76,6 +78,14 @@ body[data-colored-text="on"] .optionKey {
 body[data-colored-text="on"] .card.weapon,
 body[data-colored-text="on"] .card.potion {
     color: var(--red);
+}
+
+body[data-colored-text="on"] .card.toolkit {
+    color: var(--yellow);
+}
+
+body[data-colored-text="on"] .card.poison {
+    color: var(--purple);
 }
 
 body[data-colored-text="on"] .card.enemy {
