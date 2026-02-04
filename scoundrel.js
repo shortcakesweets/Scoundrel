@@ -80,11 +80,20 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
         }
     }
 
-    function createDeck() {
+    function createDeck({ includeSpecialCards = true } = {}) {
         const deck = [];
         const suits = [SUIT.hearts, SUIT.diamonds, SUIT.clubs, SUIT.spades];
         for (const suit of suits) {
             for (let rank = 2; rank <= 14; rank += 1) {
+                if (!includeSpecialCards) {
+                    // Classic mode: remove A/J/Q/K of Hearts and Diamonds.
+                    if (
+                        (suit === SUIT.hearts || suit === SUIT.diamonds) &&
+                        (rank === 11 || rank === 12 || rank === 13 || rank === 14)
+                    ) {
+                        continue;
+                    }
+                }
                 deck.push({ suit, rank });
             }
         }
@@ -222,15 +231,20 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                     {
                         key: "1",
                         label: "Start game",
-                        onSelect: () => this.startGame(),
+                        onSelect: () => this.startGame({ includeSpecialCards: false }),
                     },
                     {
                         key: "2",
+                        label: "Start game +",
+                        onSelect: () => this.startGame({ includeSpecialCards: true }),
+                    },
+                    {
+                        key: "3",
                         label: "How to play",
                         onSelect: () => this.showHowTo(),
                     },
                     {
-                        key: "3",
+                        key: "4",
                         label: "Option",
                         onSelect: () => this.showOptions(),
                     },
@@ -273,6 +287,10 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                     "",
                     "You are a scoundrel exploring rooms filled with enemies...",
                     "",
+                    "Modes:",
+                    "- Start game: Classic (no J/Q/K/A Hearts/Diamonds).",
+                    "- Start game +: Includes toolkits and poison.",
+                    "",
                     "Card types:",
                     "- Diamonds 2-10 (◆): Weapons.",
                     "   You may equip only one weapon at a time.",
@@ -310,9 +328,9 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             });
         },
 
-        startGame() {
+        startGame({ includeSpecialCards = true } = {}) {
             // Ensure at least 1 weapon is present in the first room.
-            let deck = createDeck();
+            let deck = createDeck({ includeSpecialCards });
             let table = [
                 drawTop(deck),
                 drawTop(deck),
@@ -321,7 +339,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             ];
             let safety = 0;
             while (!table.some((c) => c && isWeapon(c)) && safety < 200) {
-                deck = createDeck();
+                deck = createDeck({ includeSpecialCards });
                 table = [
                     drawTop(deck),
                     drawTop(deck),
@@ -342,6 +360,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                 interactionsThisRoom: 0,
                 fledLastRoom: false,
                 lastUsedCard: null,
+                includeSpecialCards,
             };
             this.pending = null;
             this.mode = "room";
@@ -600,7 +619,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
 
             g.potionUsedThisRoom = true;
             if (isPoisonPotion(potionCard)) {
-                const damage = potionCard.rank;
+                const damage = 10;
                 g.hp = Math.max(0, g.hp - damage);
                 if (g.hp <= 0) return this.finishGameDeath();
                 this.afterInteraction([`The poison burns. You take ${damage} damage.`]);
@@ -680,7 +699,10 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                     {
                         key: "2",
                         label: "Restart",
-                        onSelect: () => this.startGame(),
+                        onSelect: () =>
+                            this.startGame({
+                                includeSpecialCards: g.includeSpecialCards ?? true,
+                            }),
                     },
                 ],
             });
@@ -721,7 +743,10 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                     {
                         key: "2",
                         label: "Restart",
-                        onSelect: () => this.startGame(),
+                        onSelect: () =>
+                            this.startGame({
+                                includeSpecialCards: g.includeSpecialCards ?? true,
+                            }),
                     },
                 ],
             });
