@@ -132,6 +132,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
 
     const resetBtnEl = document.getElementById("resetBtn");
     const queueBtnEl = document.getElementById("queueBtn");
+    const bgStatusEl = document.getElementById("bgStatus");
     const solver = typeof window !== "undefined" ? window.ScoundrelSolver : null;
     const SILENT_POOL_LIMIT = 3;
     const SILENT_SOLVE_TIME_LIMIT_MS = 5000;
@@ -260,7 +261,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
         mode: "menu",
         game: null,
         pending: null, // e.g. { kind: 'enemyChoice', slotIndex, enemyCard }
-        settings: { coloredText: true, hintText: true },
+        settings: { coloredText: true, hintText: true, showBackgroundLabel: false },
         resetReturn: null,
         pendingDungeon: null,
         createDungeonToken: 0,
@@ -281,11 +282,27 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             if (queueBtnEl) {
                 queueBtnEl.hidden = this.mode !== "menu";
             }
+            if (bgStatusEl) {
+                if (this.settings.showBackgroundLabel) {
+                    bgStatusEl.hidden = false;
+                    bgStatusEl.textContent = this.getBackgroundLabel();
+                } else {
+                    bgStatusEl.hidden = true;
+                }
+            }
+            const model = {
+                ...screenModel,
+                lines: Array.isArray(screenModel.lines) ? screenModel.lines.slice() : [],
+                options: screenModel.options ?? [],
+                dimLines: Array.isArray(screenModel.dimLines)
+                    ? screenModel.dimLines.slice()
+                    : [],
+            };
             this.screenOptions = new Map();
-            for (const opt of screenModel.options ?? []) {
+            for (const opt of model.options ?? []) {
                 if (opt && !opt.spacer) this.screenOptions.set(String(opt.key), opt);
             }
-            renderScreen(screenModel);
+            renderScreen(model);
         },
 
         handleInput(raw) {
@@ -368,6 +385,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
 
             const enabled = this.settings.coloredText;
             const hintEnabled = this.settings.hintText;
+            const bgLabelEnabled = this.settings.showBackgroundLabel;
             this.setScreen({
                 lines: ["Options"],
                 options: [
@@ -384,6 +402,15 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                         label: `Hint text (${hintEnabled ? "Enabled" : "Disabled"})`,
                         onSelect: () => {
                             this.settings.hintText = !this.settings.hintText;
+                            this.showOptions();
+                        },
+                    },
+                    {
+                        key: "3",
+                        label: `Background label (${bgLabelEnabled ? "Enabled" : "Disabled"})`,
+                        onSelect: () => {
+                            this.settings.showBackgroundLabel =
+                                !this.settings.showBackgroundLabel;
                             this.showOptions();
                         },
                     },
@@ -422,7 +449,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                     "",
                     "## Fight",
                     "When you choose to fight, you should interact with 3 cards.",
-                    "After that, 3 new cards are drawn and creates a new room.",
+                    "After that, 3 new cards are drawn and creates a new room, unless there is no card to draw.",
                     "",
                     "# Interactable cards",
                     "",
@@ -448,7 +475,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                     "The damage that you take is max(enemy rank - weapon rank, 0).",
                     "",
                     "However, killing an enemy with a weapon makes it dull.",
-                    "You cannot use a weapon to a enemy that has higher rank than the last enemy that you've killed with that weapon.",
+                    "You can use a weapon to a enemy only when it has lower rank than the last enemy that you've killed with that weapon.",
                     "",
                     "2. Using your bare fist",
                     "The damage you take is equal to the enemy rank.",
@@ -651,6 +678,13 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             const pool = this.silentPools[key];
             if (!pool || pool.length === 0) return null;
             return pool.shift();
+        },
+
+        getBackgroundLabel() {
+            if (!solver) return "Background generation: unavailable";
+            if (!this.silentSolverRunning) return "Background generation: off";
+            if (this.shouldRunSilentSolver()) return "Background generation: running";
+            return "Background generation: paused";
         },
 
         shouldRunSilentSolver() {
@@ -1072,12 +1106,17 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                     }
                 }
 
-                g.room += 1;
-                g.interactionsThisRoom = 0;
-                g.potionUsedThisRoom = false;
-                g.fledLastRoom = false;
+                if (drew !== 0){
+                    g.room += 1;
+                    g.interactionsThisRoom = 0;
+                    g.potionUsedThisRoom = false;
+                    g.fledLastRoom = false;
 
-                this.showRoom([...messageLines, "You enter the next room..."]);
+                    this.showRoom([...messageLines, "You enter the next room..."]);
+                } else {
+                    this.showRoom(messageLines);
+                }
+
                 return;
             }
 

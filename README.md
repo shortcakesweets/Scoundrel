@@ -18,7 +18,7 @@ You may not flee 2 times in a row.
 
 ### Fight
 When you choose to fight, you should interact with 3 cards.
-After that, 3 new cards are drawn and creates a new room.
+After that, 3 new cards are drawn and creates a new room, unless there is no card to draw.
 
 ## Interactable cards
 
@@ -44,7 +44,7 @@ Weapons can reduce damage when killing an enemy.
 The damage that you take is max(enemy rank - weapon rank, 0).
 
 However, killing an enemy with a weapon makes it dull.
-You cannot use a weapon to a enemy that has higher rank than the last enemy that you've killed with that weapon.
+You can use a weapon to a enemy only when it has lower rank than the last enemy that you've killed with that weapon.
 
 2. Using your bare fist
 The damage you take is equal to the enemy rank.
