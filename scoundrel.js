@@ -532,6 +532,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                         key: "9",
                         label: "Skip calculation (start random dungeon)",
                         onSelect: () => {
+                            this.createDungeonToken += 1;
                             const fullDeck = createDeck({ includeSpecialCards });
                             const deckForGame = fullDeck.slice();
                             const table = [
@@ -563,6 +564,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                                 key: "9",
                                 label: "Skip calculation (start random dungeon)",
                                 onSelect: () => {
+                                    this.createDungeonToken += 1;
                                     const fullDeck = createDeck({ includeSpecialCards });
                                     const deckForGame = fullDeck.slice();
                                     const table = [
