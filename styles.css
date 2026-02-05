@@ -46,6 +46,11 @@ body {
     cursor: pointer;
 }
 
+.queueBtn {
+    right: 10px;
+    left: auto;
+}
+
 .resetBtn:hover {
     text-decoration: underline;
 }

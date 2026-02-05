@@ -426,8 +426,117 @@ function createSolver() {
         return { clearable: false, nodes, ms: startMs !== null ? Date.now() - startMs : undefined };
     }
 
+    async function solveCooperative(deck, opts = {}) {
+        const {
+            includeSpecialCards = true,
+            startingHp = 20,
+            maxNodes = 500000,
+            returnPath = false,
+            timeLimitMs = null,
+            shouldAbort = null,
+            yieldEvery = 2000,
+        } = opts;
+
+        const initial = makeInitialState(deck, { includeSpecialCards, startingHp });
+        if (isDeadState(initial)) return { clearable: false, reason: "dead_start" };
+        if (isWinState(initial)) return { clearable: true, path: [] };
+
+        const visited = new Set();
+        const parent = returnPath ? new Map() : null; // key -> { prevKey, action }
+
+        let nodes = 0;
+        let nodesSinceYield = 0;
+        const startMs = typeof timeLimitMs === "number" ? Date.now() : null;
+
+        const stack = [{ state: initial, actions: null, index: 0 }];
+        const keyStack = [stateKey(initial)];
+        if (parent) parent.set(keyStack[0], { prevKey: null, action: null });
+
+        while (stack.length > 0) {
+            if (typeof shouldAbort === "function" && shouldAbort()) {
+                return {
+                    clearable: null,
+                    reason: "aborted",
+                    nodes,
+                    ms: startMs !== null ? Date.now() - startMs : undefined,
+                };
+            }
+            if (startMs !== null && Date.now() - startMs >= timeLimitMs) {
+                return { clearable: null, reason: "time_limit", nodes, ms: Date.now() - startMs };
+            }
+            if (nodes++ > maxNodes) {
+                return { clearable: null, reason: "node_limit", nodes };
+            }
+
+            nodesSinceYield += 1;
+            if (nodesSinceYield >= yieldEvery) {
+                nodesSinceYield = 0;
+                await new Promise((r) => setTimeout(r, 0));
+            }
+
+            const frame = stack[stack.length - 1];
+            const key = keyStack[keyStack.length - 1];
+
+            if (!frame.actions) {
+                if (visited.has(key)) {
+                    stack.pop();
+                    keyStack.pop();
+                    continue;
+                }
+                visited.add(key);
+
+                if (isDeadState(frame.state)) {
+                    stack.pop();
+                    keyStack.pop();
+                    continue;
+                }
+                if (isWinState(frame.state)) {
+                    return { clearable: true, nodes, path: returnPath ? [] : undefined };
+                }
+
+                frame.actions = enumerateActions(frame.state);
+                frame.index = 0;
+            }
+
+            if (frame.index >= frame.actions.length) {
+                stack.pop();
+                keyStack.pop();
+                continue;
+            }
+
+            const action = frame.actions[frame.index++];
+            const out = applyAction(frame.state, action);
+            if (out.terminal === "win") {
+                if (!returnPath) return { clearable: true, nodes };
+                const winKey = `${key}=>WIN@${frame.index - 1}`;
+                parent.set(winKey, { prevKey: key, action });
+                const path = [];
+                let cur = winKey;
+                while (true) {
+                    const p = parent.get(cur);
+                    if (!p || !p.prevKey) break;
+                    path.push(p.action);
+                    cur = p.prevKey;
+                }
+                path.reverse();
+                return { clearable: true, nodes, path };
+            }
+            if (out.terminal === "dead" || !out.state) continue;
+
+            const nextKey = stateKey(out.state);
+            if (visited.has(nextKey)) continue;
+
+            stack.push({ state: out.state, actions: null, index: 0 });
+            keyStack.push(nextKey);
+            if (parent && !parent.has(nextKey)) parent.set(nextKey, { prevKey: key, action });
+        }
+
+        return { clearable: false, nodes, ms: startMs !== null ? Date.now() - startMs : undefined };
+    }
+
     return {
         solve,
+        solveCooperative,
         makeInitialState,
         parseCard,
         cardText,

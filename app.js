@@ -24,6 +24,13 @@ window.addEventListener("keydown", (e) => {
             if (typeof scoundrel.requestReset === "function") scoundrel.requestReset();
             return;
         }
+        if (e.key === "q" || e.key === "Q") {
+            if (scoundrel.mode === "menu" && typeof scoundrel.showDeckQueue === "function") {
+                e.preventDefault();
+                scoundrel.showDeckQueue();
+                return;
+            }
+        }
     }
 
     const key = keyToOptionIndex(e);

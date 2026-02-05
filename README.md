@@ -29,7 +29,7 @@ You may only hold 1 weapon. If you select another, the old one will be discarded
 
 ### 2-10 of Hearts
 
-These are health potions. Your HP will increase by it's rank.
+These are health potions. Your HP will increase by its rank.
 Your HP cannot exceed your initial HP (20).
 
 You may only drink 1 potion in a room.
@@ -67,7 +67,7 @@ Any potions consumed after will fizzle and have no effect.
 
 When you interact with all of the cards without reaching HP 0, you win.
 The score becomes your remaining HP.
-If the last card you used was a health potion, it's rank is added up to your score.
+If the last card you used was a health potion, its rank is added up to your score.
 The maximum score that you can achieve is 30.
 
 If you reach HP 0, you lose.

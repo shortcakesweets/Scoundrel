@@ -106,8 +106,36 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
         return deck.pop() ?? null;
     }
 
+    function buildCandidateDungeon(includeSpecialCards) {
+        let fullDeck = createDeck({ includeSpecialCards });
+        let deckForGame = fullDeck.slice();
+        let table = [
+            drawTop(deckForGame),
+            drawTop(deckForGame),
+            drawTop(deckForGame),
+            drawTop(deckForGame),
+        ];
+        let safety = 0;
+        while (!table.some((c) => c && isWeapon(c)) && safety < 200) {
+            fullDeck = createDeck({ includeSpecialCards });
+            deckForGame = fullDeck.slice();
+            table = [
+                drawTop(deckForGame),
+                drawTop(deckForGame),
+                drawTop(deckForGame),
+                drawTop(deckForGame),
+            ];
+            safety += 1;
+        }
+        return { fullDeck, deckForGame, table };
+    }
+
     const resetBtnEl = document.getElementById("resetBtn");
+    const queueBtnEl = document.getElementById("queueBtn");
     const solver = typeof window !== "undefined" ? window.ScoundrelSolver : null;
+    const SILENT_POOL_LIMIT = 3;
+    const SILENT_SOLVE_TIME_LIMIT_MS = 5000;
+    const SILENT_SOLVE_MAX_NODES = 5_000_000;
 
     const DUNGEON_TIPS = [
         "Use fists to avoid dulling your weapon.",
@@ -236,6 +264,9 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
         resetReturn: null,
         pendingDungeon: null,
         createDungeonToken: 0,
+        silentPools: { base: [], plus: [] },
+        silentSolverToken: 0,
+        silentSolverRunning: false,
 
         setScreen(screenModel) {
             applyColoredTextSetting(this.settings.coloredText);
@@ -244,7 +275,11 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                     this.mode === "menu" ||
                     this.mode === "resetConfirm" ||
                     this.mode === "creatingDungeon" ||
-                    this.mode === "dungeonReady";
+                    this.mode === "dungeonReady" ||
+                    this.mode === "deckQueue";
+            }
+            if (queueBtnEl) {
+                queueBtnEl.hidden = this.mode !== "menu";
             }
             this.screenOptions = new Map();
             for (const opt of screenModel.options ?? []) {
@@ -263,6 +298,8 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
 
         start() {
             if (resetBtnEl) resetBtnEl.addEventListener("click", () => this.requestReset());
+            if (queueBtnEl) queueBtnEl.addEventListener("click", () => this.showDeckQueue());
+            this.startSilentSolver();
             this.showMenu();
         },
 
@@ -300,6 +337,26 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                         key: "4",
                         label: "Option",
                         onSelect: () => this.showOptions(),
+                    },
+                ],
+            });
+        },
+
+        showDeckQueue() {
+            this.mode = "deckQueue";
+            this.pending = null;
+            this.setScreen({
+                lines: [
+                    "Deck Queue",
+                    "",
+                    `Base decks ready: ${this.silentPools.base.length}/${SILENT_POOL_LIMIT}`,
+                    `Scoundrel+ decks ready: ${this.silentPools.plus.length}/${SILENT_POOL_LIMIT}`,
+                ],
+                options: [
+                    {
+                        key: "0",
+                        label: "Return to main menu",
+                        onSelect: () => this.showMenu(),
                     },
                 ],
             });
@@ -376,7 +433,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                     "",
                     "## 2-10 of Hearts",
                     "",
-                    "These are health potions. Your HP will increase by it's rank.",
+                    "These are health potions. Your HP will increase by its rank.",
                     "Your HP cannot exceed your initial HP (20).",
                     "",
                     "You may only drink 1 potion in a room.",
@@ -414,7 +471,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                     "",
                     "When you interact with all of the cards without reaching HP 0, you win.",
                     "The score becomes your remaining HP.",
-                    "If the last card you used was a health potion, it's rank is added up to your score.",
+                    "If the last card you used was a health potion, its rank is added up to your score.",
                     "The maximum score that you can achieve is 30.",
                     "",
                     "If you reach HP 0, you lose.",
@@ -451,6 +508,12 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
         },
 
         beginDungeonCreation({ includeSpecialCards }) {
+            const prepared = this.takePreparedDungeon(includeSpecialCards);
+            if (prepared) {
+                this.startGameFromPreparedDungeon(prepared);
+                return;
+            }
+
             const myToken = (this.createDungeonToken += 1);
             this.pendingDungeon = null;
             this.pending = null;
@@ -463,7 +526,28 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
 
             this.setScreen({
                 lines: makeTipLines(),
-                options: [{ key: "0", label: "Cancel", onSelect: () => this.showMenu() }],
+                options: [
+                    { key: "0", label: "Cancel", onSelect: () => this.showMenu() },
+                    {
+                        key: "9",
+                        label: "Skip calculation (start random dungeon)",
+                        onSelect: () => {
+                            const fullDeck = createDeck({ includeSpecialCards });
+                            const deckForGame = fullDeck.slice();
+                            const table = [
+                                drawTop(deckForGame),
+                                drawTop(deckForGame),
+                                drawTop(deckForGame),
+                                drawTop(deckForGame),
+                            ];
+                            this.startGameFromPreparedDungeon({
+                                deck: deckForGame,
+                                table,
+                                includeSpecialCards,
+                            });
+                        },
+                    },
+                ],
             });
 
             const run = async () => {
@@ -473,10 +557,31 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                 while (this.createDungeonToken === myToken) {
                     this.setScreen({
                         lines: makeTipLines(),
-                        options: [{ key: "0", label: "Cancel", onSelect: () => this.showMenu() }],
+                        options: [
+                            { key: "0", label: "Cancel", onSelect: () => this.showMenu() },
+                            {
+                                key: "9",
+                                label: "Skip calculation (start random dungeon)",
+                                onSelect: () => {
+                                    const fullDeck = createDeck({ includeSpecialCards });
+                                    const deckForGame = fullDeck.slice();
+                                    const table = [
+                                        drawTop(deckForGame),
+                                        drawTop(deckForGame),
+                                        drawTop(deckForGame),
+                                        drawTop(deckForGame),
+                                    ];
+                                    this.startGameFromPreparedDungeon({
+                                        deck: deckForGame,
+                                        table,
+                                        includeSpecialCards,
+                                    });
+                                },
+                            },
+                        ],
                     });
 
-                    if (!solver || typeof solver.solve !== "function") {
+                    if (!solver || typeof solver.solveCooperative !== "function") {
                         this.setScreen({
                             lines: [
                                 "Creating Dungeon...",
@@ -489,32 +594,15 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                     }
 
                     // Build a candidate deck and ensure at least 1 weapon in first room.
-                    let fullDeck = createDeck({ includeSpecialCards });
-                    let deckForGame = fullDeck.slice();
-                    let table = [
-                        drawTop(deckForGame),
-                        drawTop(deckForGame),
-                        drawTop(deckForGame),
-                        drawTop(deckForGame),
-                    ];
-                    let safety = 0;
-                    while (!table.some((c) => c && isWeapon(c)) && safety < 200) {
-                        fullDeck = createDeck({ includeSpecialCards });
-                        deckForGame = fullDeck.slice();
-                        table = [
-                            drawTop(deckForGame),
-                            drawTop(deckForGame),
-                            drawTop(deckForGame),
-                            drawTop(deckForGame),
-                        ];
-                        safety += 1;
-                    }
+                    const { fullDeck, deckForGame, table } =
+                        buildCandidateDungeon(includeSpecialCards);
 
                     // Check clearability (5s per deck).
-                    const result = solver.solve(fullDeck, {
+                    const result = await solver.solveCooperative(fullDeck, {
                         includeSpecialCards,
                         timeLimitMs: 5000,
                         maxNodes: 5_000_000,
+                        shouldAbort: () => this.createDungeonToken !== myToken,
                     });
 
                     if (this.createDungeonToken !== myToken) return;
@@ -554,6 +642,82 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             const prepared = this.pendingDungeon;
             this.pendingDungeon = null;
             this.startGameFromPreparedDungeon(prepared);
+        },
+
+        takePreparedDungeon(includeSpecialCards) {
+            const key = includeSpecialCards ? "plus" : "base";
+            const pool = this.silentPools[key];
+            if (!pool || pool.length === 0) return null;
+            return pool.shift();
+        },
+
+        shouldRunSilentSolver() {
+            return (
+                this.mode === "menu" ||
+                this.mode === "deckQueue" ||
+                this.mode === "room" ||
+                this.mode === "enemyChoice" ||
+                this.mode === "gameOver"
+            );
+        },
+
+        enqueuePreparedDungeon(prepared) {
+            const key = prepared.includeSpecialCards ? "plus" : "base";
+            const pool = this.silentPools[key];
+            if (!pool || pool.length >= SILENT_POOL_LIMIT) return false;
+            pool.push(prepared);
+            if (this.mode === "deckQueue") this.showDeckQueue();
+            return true;
+        },
+
+        async fillSilentPool(includeSpecialCards, token) {
+            if (!solver) return;
+            if (this.silentSolverToken !== token) return;
+            if (!this.shouldRunSilentSolver()) return;
+            const key = includeSpecialCards ? "plus" : "base";
+            if (this.silentPools[key].length >= SILENT_POOL_LIMIT) return;
+
+            const { fullDeck, deckForGame, table } =
+                buildCandidateDungeon(includeSpecialCards);
+
+            const result = await solver.solveCooperative(fullDeck, {
+                includeSpecialCards,
+                timeLimitMs: SILENT_SOLVE_TIME_LIMIT_MS,
+                maxNodes: SILENT_SOLVE_MAX_NODES,
+                shouldAbort: () =>
+                    this.silentSolverToken !== token || !this.shouldRunSilentSolver(),
+            });
+
+            if (this.silentSolverToken !== token) return;
+            if (!this.shouldRunSilentSolver()) return;
+            if (result.clearable !== true) return;
+
+            this.enqueuePreparedDungeon({
+                deck: deckForGame,
+                table,
+                includeSpecialCards,
+            });
+        },
+
+        startSilentSolver() {
+            if (this.silentSolverRunning) return;
+            this.silentSolverRunning = true;
+            const myToken = (this.silentSolverToken += 1);
+
+            const run = async () => {
+                await new Promise((r) => setTimeout(r, 0));
+                while (this.silentSolverToken === myToken) {
+                    if (!this.shouldRunSilentSolver()) {
+                        await new Promise((r) => setTimeout(r, 100));
+                        continue;
+                    }
+                    await this.fillSilentPool(false, myToken);
+                    await this.fillSilentPool(true, myToken);
+                    await new Promise((r) => setTimeout(r, 0));
+                }
+            };
+
+            run();
         },
 
         statusLines() {
