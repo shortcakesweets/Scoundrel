@@ -107,6 +107,29 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
     }
 
     const resetBtnEl = document.getElementById("resetBtn");
+    const solver = typeof window !== "undefined" ? window.ScoundrelSolver : null;
+
+    const DUNGEON_TIPS = [
+        "Use fists to avoid dulling your weapon.",
+        "Fleeing is not cowardice; it’s strategic repositioning.",
+        "Weapon kills must strictly go down in rank afterward.",
+        "A second potion in the same room fizzles—even if it’s a poison potion.",
+        "A new room is drawn after 3 interactions.",
+        "Toolkits can undo a bad weapon-kill order. Use them wisely.",
+        "If you can take 0 damage with a weapon kill, it’s often worth it (but it still dulls the weapon).",
+        "When low HP, consider whether a potion is actually usable this room.",
+        "Sometimes skipping weapon kills early keeps future options open.",
+    ];
+
+    function pickRandomUnique(array, count) {
+        const n = Math.max(0, Math.min(count, array.length));
+        const pool = array.slice();
+        for (let i = pool.length - 1; i > 0; i -= 1) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+        return pool.slice(0, n);
+    }
 
     function clearOutput() {
         outputEl.innerHTML = "";
@@ -211,11 +234,17 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
         pending: null, // e.g. { kind: 'enemyChoice', slotIndex, enemyCard }
         settings: { coloredText: true, hintText: true },
         resetReturn: null,
+        pendingDungeon: null,
+        createDungeonToken: 0,
 
         setScreen(screenModel) {
             applyColoredTextSetting(this.settings.coloredText);
             if (resetBtnEl) {
-                resetBtnEl.hidden = this.mode === "menu" || this.mode === "resetConfirm";
+                resetBtnEl.hidden =
+                    this.mode === "menu" ||
+                    this.mode === "resetConfirm" ||
+                    this.mode === "creatingDungeon" ||
+                    this.mode === "dungeonReady";
             }
             this.screenOptions = new Map();
             for (const opt of screenModel.options ?? []) {
@@ -242,6 +271,8 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             this.game = null;
             this.pending = null;
             this.resetReturn = null;
+            this.pendingDungeon = null;
+            this.createDungeonToken += 1;
 
             this.setScreen({
                 lines: [
@@ -253,12 +284,12 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                     {
                         key: "1",
                         label: "Start game",
-                        onSelect: () => this.startGame({ includeSpecialCards: false }),
+                        onSelect: () => this.beginDungeonCreation({ includeSpecialCards: false }),
                     },
                     {
                         key: "2",
                         label: "Start game +",
-                        onSelect: () => this.startGame({ includeSpecialCards: true }),
+                        onSelect: () => this.beginDungeonCreation({ includeSpecialCards: true }),
                     },
                     {
                         key: "3",
@@ -399,27 +430,8 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             });
         },
 
-        startGame({ includeSpecialCards = true } = {}) {
-            // Ensure at least 1 weapon is present in the first room.
-            let deck = createDeck({ includeSpecialCards });
-            let table = [
-                drawTop(deck),
-                drawTop(deck),
-                drawTop(deck),
-                drawTop(deck),
-            ];
-            let safety = 0;
-            while (!table.some((c) => c && isWeapon(c)) && safety < 200) {
-                deck = createDeck({ includeSpecialCards });
-                table = [
-                    drawTop(deck),
-                    drawTop(deck),
-                    drawTop(deck),
-                    drawTop(deck),
-                ];
-                safety += 1;
-            }
-
+        startGameFromPreparedDungeon(prepared) {
+            const { deck, table, includeSpecialCards } = prepared;
             this.game = {
                 room: 1,
                 hp: MAX_HP,
@@ -436,6 +448,112 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             this.pending = null;
             this.mode = "room";
             this.showRoom(["You enter a dark room filled with monsters..."]);
+        },
+
+        beginDungeonCreation({ includeSpecialCards }) {
+            const myToken = (this.createDungeonToken += 1);
+            this.pendingDungeon = null;
+            this.pending = null;
+            this.mode = "creatingDungeon";
+
+            const makeTipLines = () => {
+                const tips = pickRandomUnique(DUNGEON_TIPS, 1);
+                return ["Creating Dungeon...", "", "Tip:", ...tips.map((t) => `- ${t}`)];
+            };
+
+            this.setScreen({
+                lines: makeTipLines(),
+                options: [{ key: "0", label: "Cancel", onSelect: () => this.showMenu() }],
+            });
+
+            const run = async () => {
+                // Let the UI paint first.
+                await new Promise((r) => setTimeout(r, 0));
+
+                while (this.createDungeonToken === myToken) {
+                    this.setScreen({
+                        lines: makeTipLines(),
+                        options: [{ key: "0", label: "Cancel", onSelect: () => this.showMenu() }],
+                    });
+
+                    if (!solver || typeof solver.solve !== "function") {
+                        this.setScreen({
+                            lines: [
+                                "Creating Dungeon...",
+                                "",
+                                "Solver not found. Make sure solver.js is loaded.",
+                            ],
+                            options: [{ key: "0", label: "Back", onSelect: () => this.showMenu() }],
+                        });
+                        return;
+                    }
+
+                    // Build a candidate deck and ensure at least 1 weapon in first room.
+                    let fullDeck = createDeck({ includeSpecialCards });
+                    let deckForGame = fullDeck.slice();
+                    let table = [
+                        drawTop(deckForGame),
+                        drawTop(deckForGame),
+                        drawTop(deckForGame),
+                        drawTop(deckForGame),
+                    ];
+                    let safety = 0;
+                    while (!table.some((c) => c && isWeapon(c)) && safety < 200) {
+                        fullDeck = createDeck({ includeSpecialCards });
+                        deckForGame = fullDeck.slice();
+                        table = [
+                            drawTop(deckForGame),
+                            drawTop(deckForGame),
+                            drawTop(deckForGame),
+                            drawTop(deckForGame),
+                        ];
+                        safety += 1;
+                    }
+
+                    // Check clearability (5s per deck).
+                    const result = solver.solve(fullDeck, {
+                        includeSpecialCards,
+                        timeLimitMs: 5000,
+                        maxNodes: 5_000_000,
+                    });
+
+                    if (this.createDungeonToken !== myToken) return;
+
+                    if (result.clearable === true) {
+                        this.pendingDungeon = { deck: deckForGame, table, includeSpecialCards };
+                        this.mode = "dungeonReady";
+                        this.setScreen({
+                            lines: [
+                                "The dungeon awaits you...",
+                                "",
+                                "(Press [1] or click below to enter.)",
+                            ],
+                            options: [
+                                {
+                                    key: "1",
+                                    label: "Enter the dungeon",
+                                    onSelect: () => this.enterDungeon(),
+                                },
+                                { key: "0", label: "Back", onSelect: () => this.showMenu() },
+                            ],
+                        });
+                        return;
+                    }
+
+                    // If not proven clearable within the budget, try another shuffle.
+                    // (result.clearable === false OR null/time_limit OR node_limit)
+                    await new Promise((r) => setTimeout(r, 0));
+                }
+            };
+
+            run();
+        },
+
+        enterDungeon() {
+            if (!this.pendingDungeon) return;
+            const prepared = this.pendingDungeon;
+            this.pendingDungeon = null;
+            this.startGameFromPreparedDungeon(prepared);
         },
 
         statusLines() {
@@ -832,7 +950,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                         key: "2",
                         label: "Restart",
                         onSelect: () =>
-                            this.startGame({
+                            this.beginDungeonCreation({
                                 includeSpecialCards: g.includeSpecialCards ?? true,
                             }),
                     },
@@ -876,7 +994,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                         key: "2",
                         label: "Restart",
                         onSelect: () =>
-                            this.startGame({
+                            this.beginDungeonCreation({
                                 includeSpecialCards: g.includeSpecialCards ?? true,
                             }),
                     },
