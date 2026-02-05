@@ -18,6 +18,14 @@ function keyToOptionIndex(e) {
 }
 
 window.addEventListener("keydown", (e) => {
+    if (!e.defaultPrevented && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.key === "r" || e.key === "R") {
+            e.preventDefault();
+            if (typeof scoundrel.requestReset === "function") scoundrel.requestReset();
+            return;
+        }
+    }
+
     const key = keyToOptionIndex(e);
     if (key === null) return;
     e.preventDefault();

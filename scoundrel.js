@@ -106,6 +106,8 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
         return deck.pop() ?? null;
     }
 
+    const resetBtnEl = document.getElementById("resetBtn");
+
     function clearOutput() {
         outputEl.innerHTML = "";
     }
@@ -208,9 +210,13 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
         game: null,
         pending: null, // e.g. { kind: 'enemyChoice', slotIndex, enemyCard }
         settings: { coloredText: true, hintText: true },
+        resetReturn: null,
 
         setScreen(screenModel) {
             applyColoredTextSetting(this.settings.coloredText);
+            if (resetBtnEl) {
+                resetBtnEl.hidden = this.mode === "menu" || this.mode === "resetConfirm";
+            }
             this.screenOptions = new Map();
             for (const opt of screenModel.options ?? []) {
                 if (opt && !opt.spacer) this.screenOptions.set(String(opt.key), opt);
@@ -227,6 +233,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
         },
 
         start() {
+            if (resetBtnEl) resetBtnEl.addEventListener("click", () => this.requestReset());
             this.showMenu();
         },
 
@@ -234,6 +241,7 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             this.mode = "menu";
             this.game = null;
             this.pending = null;
+            this.resetReturn = null;
 
             this.setScreen({
                 lines: [
@@ -502,6 +510,41 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
             }
 
             this.setScreen({ lines, options });
+        },
+
+        requestReset() {
+            if (this.mode === "menu" || this.mode === "resetConfirm") return;
+
+            const returnFn = (() => {
+                if (this.mode === "room") return () => this.showRoom([]);
+                if (this.mode === "enemyChoice" && this.pending?.kind === "enemyChoice") {
+                    return () =>
+                        this.showEnemyChoice(this.pending.slotIndex, this.pending.enemyCard);
+                }
+                if (this.mode === "options") return () => this.showOptions();
+                if (this.mode === "howto") return () => this.showHowTo();
+                return () => this.showMenu();
+            })();
+
+            this.resetReturn = returnFn;
+            this.mode = "resetConfirm";
+            this.pending = null;
+            this.setScreen({
+                lines: ["Reset", "", "Reset and return to main menu?"],
+                options: [
+                    { key: "1", label: "Yes", onSelect: () => this.showMenu() },
+                    {
+                        key: "0",
+                        label: "No",
+                        onSelect: () => {
+                            const goBack = this.resetReturn;
+                            this.resetReturn = null;
+                            if (goBack) goBack();
+                            else this.showMenu();
+                        },
+                    },
+                ],
+            });
         },
 
         fleeRoom() {

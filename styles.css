@@ -32,6 +32,24 @@ body {
     font-family: var(--font);
 }
 
+.resetBtn {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    background: transparent;
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font: inherit;
+    cursor: pointer;
+}
+
+.resetBtn:hover {
+    text-decoration: underline;
+}
+
 #terminal {
     min-height: 100vh;
     padding: var(--pad);
