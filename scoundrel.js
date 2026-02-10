@@ -560,14 +560,8 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                         label: "Skip calculation (start random dungeon)",
                         onSelect: () => {
                             this.createDungeonToken += 1;
-                            const fullDeck = createDeck({ includeSpecialCards });
-                            const deckForGame = fullDeck.slice();
-                            const table = [
-                                drawTop(deckForGame),
-                                drawTop(deckForGame),
-                                drawTop(deckForGame),
-                                drawTop(deckForGame),
-                            ];
+                            const { deckForGame, table } =
+                                buildCandidateDungeon(includeSpecialCards);
                             this.startGameFromPreparedDungeon({
                                 deck: deckForGame,
                                 table,
@@ -592,14 +586,8 @@ function createScoundrelApp({ outputEl, inputEl = null }) {
                                 label: "Skip calculation (start random dungeon)",
                                 onSelect: () => {
                                     this.createDungeonToken += 1;
-                                    const fullDeck = createDeck({ includeSpecialCards });
-                                    const deckForGame = fullDeck.slice();
-                                    const table = [
-                                        drawTop(deckForGame),
-                                        drawTop(deckForGame),
-                                        drawTop(deckForGame),
-                                        drawTop(deckForGame),
-                                    ];
+                                    const { deckForGame, table } =
+                                        buildCandidateDungeon(includeSpecialCards);
                                     this.startGameFromPreparedDungeon({
                                         deck: deckForGame,
                                         table,
