@@ -1,186 +1,585 @@
 :root {
     color-scheme: dark;
-    --bg: #000;
-    --fg: #ffffff;
-    --fg-dim: rgba(255, 255, 255, 0.7);
-    --green: #00ff66;
-    --red: #ff3b30;
-    --yellow: #ffd60a;
-    --light-yellow: #fff3a0;
-    --purple: #bf5af2;
-    --status: #9aa0a6;
-    --border: rgba(255, 255, 255, 0.18);
-    --pad: 14px;
-    --font:
-        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-        "Liberation Mono", "Courier New", monospace;
 }
 
 * {
     box-sizing: border-box;
 }
 
-html,
-body {
-    height: 100%;
-}
-
 body {
     margin: 0;
-    background: var(--bg);
-    color: var(--fg);
-    font-family: var(--font);
-}
-
-.resetBtn {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    z-index: 10;
-    background: transparent;
-    color: var(--fg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px 10px;
-    font: inherit;
-    cursor: pointer;
-}
-
-.queueBtn {
-    right: 10px;
-    left: auto;
-}
-
-.resetBtn:hover {
-    text-decoration: underline;
-}
-
-.bgStatus {
-    position: fixed;
-    left: 10px;
-    right: 10px;
-    bottom: 10px;
-    z-index: 5;
-    color: var(--fg-dim);
-    font: inherit;
-    pointer-events: none;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-#terminal {
     min-height: 100vh;
-    padding: var(--pad);
-    padding-bottom: calc(var(--pad) + env(safe-area-inset-bottom, 0px));
+    background: #000;
+    background-image:
+        radial-gradient(circle at top, #141414 0%, #060606 45%, #000 70%),
+        radial-gradient(circle at 20% 90%, #0d0d0d 0%, #000 70%);
+    color: #f2f2f2;
+    font-family: "Fira Mono", "Consolas", monospace;
+    letter-spacing: 0.02em;
 }
 
-#output {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    line-height: 1.35;
+.game {
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto auto auto 1fr;
+    align-items: start;
+    justify-items: center;
+    gap: 24px;
+    padding: 32px 16px 36px;
+    --card-w: 71px;
+    --card-h: 96px;
+    --stack-offset: 23px;
+    --stack-max: 5;
 }
 
-.line {
-    padding: 2px 0;
+.game .card-button {
+    width: calc(var(--card-w) * 1.05);
 }
 
-.dim {
-    color: inherit;
+.game .card-button img {
+    width: var(--card-w);
+    height: var(--card-h);
 }
 
-.status {
-    color: inherit;
+.status-bar {
+    width: min(92vw, 574px);
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 10px 10px;
+    border: 1px solid #1f1f1f;
 }
 
-.card {
-    color: inherit;
+.dialogue {
+    width: min(92vw, 574px);
+    border: 1px solid #1f1f1f;
+    padding: 10px 10px;
 }
 
-.optionKey {
-    color: inherit;
+#dialogue-text {
+    margin: 0;
+    line-height: 1.4;
+    min-height: calc(5 * 1.4em);
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    color: #c8c8c8;
+    white-space: pre-line;
+    text-align: center;
 }
 
-.hash1,
-.hash2 {
-    color: inherit;
+.status-deck {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    letter-spacing: 0.12em;
 }
 
-body[data-colored-text="on"] .dim {
-    color: var(--fg-dim);
+.status-deck img {
+    width: 60px;
+    height: 81px;
 }
 
-body[data-colored-text="on"] .status {
-    color: var(--status);
+.status-ace img {
+    width: 60px;
+    height: 81px;
 }
 
-body[data-colored-text="on"] .optionKey {
-    color: var(--green);
+.status-ace {
+    width: 60px;
+    height: 81px;
 }
 
-body[data-colored-text="on"] .card.weapon,
-body[data-colored-text="on"] .card.potion {
-    color: var(--red);
+.status-center {
+    display: grid;
+    gap: 8px;
+    justify-items: center;
 }
 
-body[data-colored-text="on"] .card.toolkit {
-    color: var(--yellow);
+.status-room {
+    font-size: 0.9rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
 }
 
-body[data-colored-text="on"] .card.poison {
-    color: var(--purple);
+.hp-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: nowrap;
 }
 
-body[data-colored-text="on"] .hash1 {
-    color: var(--yellow);
+.status-compact {
+    display: grid;
+    gap: 6px;
+    justify-items: center;
 }
 
-body[data-colored-text="on"] .hash2 {
-    color: var(--light-yellow);
+.hp-bar {
+    position: relative;
+    width: min(42vw, 320px);
+    height: 24px;
+    border: 1px solid #3c3c3c;
+    background: #0d0d0d;
+    overflow: hidden;
 }
 
-body[data-colored-text="on"] .card.enemy {
-    color: var(--fg);
+.hp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4f1414, #b12d2d);
+    transition: width 0.2s ease;
 }
 
-.optionBtn {
-    display: block;
-    width: 100%;
-    text-align: left;
+.hp-text {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #f2f2f2;
+}
+
+.flee-button {
     background: transparent;
-    color: var(--fg);
     border: none;
-    padding: 2px 0;
-    font: inherit;
+    padding: 0;
+    display: grid;
+    gap: 6px;
+    justify-items: center;
+    color: #f2f2f2;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
     cursor: pointer;
 }
 
-.optionBtn:hover {
-    text-decoration: underline;
+.flee-button img {
+    width: var(--card-w, 71px);
+    height: var(--card-h, 96px);
 }
 
-.optionBtn.disabled {
-    color: inherit;
-    cursor: default;
-    text-decoration: none;
+.flee-button.is-disabled {
+    color: #6f6f6f;
+    cursor: not-allowed;
 }
 
-body[data-colored-text="on"] .optionBtn.disabled {
-    color: var(--fg-dim);
+.flee-button.is-disabled img {
+    filter: grayscale(0.7) brightness(0.8);
+    opacity: 0.6;
 }
 
-body[data-colored-text="on"] .optionBtn.disabled .optionKey {
-    color: var(--fg-dim);
+.hold-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
 }
 
-.srOnly {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
+.hold-button {
+    position: relative;
     overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+    border: 1px solid #2f2f2f;
+    background: transparent;
+    color: #f2f2f2;
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    min-width: 120px;
+    cursor: pointer;
+    user-select: none;
+    touch-action: none;
+}
+
+.hold-button::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(242, 242, 242, 0.25);
+    transform: scaleX(0);
+    transform-origin: left;
+}
+
+.hold-button.is-holding::before {
+    animation: hold-fill 1s linear forwards;
+}
+
+.hold-button .hold-label {
+    position: relative;
+    z-index: 1;
+}
+
+@keyframes hold-fill {
+    from {
+        transform: scaleX(0);
+    }
+    to {
+        transform: scaleX(1);
+    }
+}
+
+.room-grid {
+    align-items: center;
+}
+
+.room-card img {
+    width: var(--card-w, 71px);
+    height: var(--card-h, 96px);
+}
+
+.room-card[disabled] img,
+.room-card[data-empty="true"] img {
+    filter: grayscale(0.7) brightness(0.8);
+    opacity: 0.6;
+}
+
+.room-card.is-selected img {
+    box-shadow: 0 0 0 2px #f2d675, 0 0 14px rgba(242, 214, 117, 0.45);
+}
+
+.room-card[disabled]:hover img,
+.room-card[disabled]:focus-visible img,
+.room-card[data-empty="true"]:hover img,
+.room-card[data-empty="true"]:focus-visible img {
+    transform: none;
+    filter: grayscale(0.7) brightness(0.8);
+}
+
+.weapon-area {
+    width: min(92vw, 820px);
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    justify-content: center;
+}
+
+.weapon-choice {
+    width: calc(var(--card-w, 71px) * 1.05);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    flex: 0 0 auto;
+    color: #f2f2f2;
+    gap: 10px;
+}
+
+.weapon-label {
+    color: #f2f2f2;
+    text-transform: uppercase;
+    display: block;
+    line-height: 1.1;
+    min-height: calc(2 * 1.1em);
+    text-align: center;
+}
+
+.weapon-choice.is-disabled {
+    color: #6f6f6f;
+    cursor: not-allowed;
+}
+
+.weapon-choice.is-disabled img {
+    filter: grayscale(0.7) brightness(0.8);
+    opacity: 0.6;
+}
+
+.weapon-choice.is-disabled .weapon-label {
+    color: #6f6f6f;
+}
+
+.weapon-choice.is-choice img {
+    box-shadow: 0 0 0 2px #f2d675, 0 0 14px rgba(242, 214, 117, 0.45);
+}
+
+.weapon-choice.is-choice.is-disabled img {
+    box-shadow: none;
+}
+
+.weapon-choice:not(.is-choice):hover img,
+.weapon-choice:not(.is-choice):focus-visible img {
+    transform: none;
+    filter: none;
+}
+
+.weapon-stack {
+    position: relative;
+    height: var(--card-h, 96px);
+    flex: 0 0 auto;
+}
+
+.weapon-stack-column {
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+}
+
+.weapon-stack .stack-card {
+    position: absolute;
+    top: 0;
+    width: var(--card-w, 71px);
+    height: var(--card-h, 96px);
+}
+
+.weapon-stack .stack-card[data-empty="true"] {
+    filter: grayscale(0.7) brightness(0.8);
+    opacity: 0.6;
+}
+
+.hint-text {
+    margin: 0;
+    font-size: 0.8rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #a0a0a0;
+}
+
+.hint-text.is-hidden {
+    display: none;
+}
+
+.debug-button {
+    margin-top: 12px;
+    border: 1px dashed #3a3a3a;
+    background: transparent;
+    color: #9a9a9a;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.room-hint {
+    display: block;
+    min-height: calc(2 * 1.1em);
+    line-height: 1.1;
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #8a8a8a;
+    text-align: center;
+}
+
+.hints-hidden .room-hint {
+    visibility: hidden;
+}
+
+.menu {
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: 22vh auto 1fr;
+    align-items: start;
+    justify-items: center;
+    gap: 28px;
+    padding: 48px 16px 36px;
+}
+
+h1 {
+    margin: 0;
+    font-size: clamp(2.8rem, 5vw, 4.2rem);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    align-self: end;
+}
+
+.card-grid {
+    width: min(92vw, 820px);
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 30px;
+    align-items: flex-start;
+    justify-content: center;
+    overflow-x: auto;
+    padding: 6px 0;
+    align-self: start;
+}
+
+.card-button {
+    background: transparent;
+    border: none;
+    padding: 0;
+    display: grid;
+    width: calc(71px * 1.05);
+    gap: 10px;
+    justify-items: center;
+    color: #d6d6d6;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+}
+
+.menu-label {
+    display: block;
+    text-align: center;
+}
+
+.card-button img {
+    width: 71px;
+    height: 96px;
+    border-radius: 0;
+    transition:
+        transform 0.2s ease,
+        filter 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.card-button:not([disabled]):hover img,
+.card-button:not([disabled]):focus-visible img {
+    transform: translateY(-6px) scale(1.02);
+    filter: saturate(1.05);
+}
+
+.weapon-choice:not(.is-choice):hover img,
+.weapon-choice:not(.is-choice):focus-visible img {
+    transform: none;
+    filter: none;
+    box-shadow: none;
+}
+
+.card-button:focus-visible {
+    outline: 2px solid #8c8c8c;
+    outline-offset: 6px;
+}
+
+.card-placeholder {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.option-label {
+    display: block;
+    line-height: 1.1;
+    min-height: calc(3 * 1.1em);
+}
+
+.option-state {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: #7c7c7c;
+}
+
+.card-button[data-enabled="true"] .option-state {
+    color: #f2f2f2;
+}
+
+.card-button[data-enabled="false"] img {
+    filter: grayscale(0.6) brightness(0.9);
+}
+
+.tips {
+    margin-top: 0;
+    max-width: 70ch;
+    text-align: center;
+    font-size: 0.95rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #9b9b9b;
+    align-self: end;
+}
+
+.tips-label {
+    color: #f1f1f1;
+    display: block;
+}
+
+#tip-text {
+    text-transform: none;
+    letter-spacing: 0.02em;
+    color: #c6c6c6;
+}
+
+@media (max-width: 640px) {
+    .game {
+        gap: 20px;
+        padding: 24px 12px 28px;
+        --card-w: 60px;
+        --card-h: 81px;
+        --stack-offset: 19px;
+        --stack-max: 3;
+    }
+
+    .status-bar {
+        gap: 10px;
+        padding: 8px 8px;
+    }
+
+    .status-deck img {
+        width: 54px;
+        height: 73px;
+    }
+
+    .status-ace img {
+        width: 54px;
+        height: 73px;
+    }
+
+    .status-ace {
+        width: 54px;
+        height: 73px;
+    }
+
+    .hp-bar {
+        width: min(55vw, 240px);
+        height: 22px;
+    }
+
+    .hp-row {
+        gap: 10px;
+    }
+
+    .flee-button img {
+        width: var(--card-w, 60px);
+        height: var(--card-h, 81px);
+    }
+
+    .hold-button {
+        min-width: 100px;
+        padding: 5px 10px;
+        font-size: 0.65rem;
+    }
+
+    .menu-label {
+        font-size: 0.72rem;
+    }
+
+    .flee-button {
+        font-size: 0.65rem;
+    }
+
+    .weapon-label {
+        font-size: 0.65rem;
+    }
+
+    .weapon-area {
+        gap: 12px;
+    }
+
+    .menu {
+        gap: 22px;
+    }
+
+    h1 {
+        letter-spacing: 0.14em;
+    }
+
+    .card-grid {
+        gap: 23px;
+    }
+
+    .card-button img {
+        width: 60px;
+        height: 81px;
+    }
+
+    .card-button {
+        width: calc(60px * 1.05);
+    }
+
+    .tips {
+        font-size: 0.85rem;
+    }
 }

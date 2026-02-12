@@ -1,40 +1,105 @@
-const outputEl = document.getElementById("output");
+const app = document.getElementById("app");
+let stopCurrentView = null;
 
-const scoundrel = window.createScoundrelApp({ outputEl });
-scoundrel.start();
+const loadFragment = async (path) => {
+    const response = await fetch(path, { cache: "no-store" });
+    if (!response.ok) {
+        throw new Error(`Failed to load ${path}: ${response.status}`);
+    }
+    return response.text();
+};
 
-function keyToOptionIndex(e) {
-    if (e.defaultPrevented) return null;
-    if (e.ctrlKey || e.metaKey || e.altKey) return null;
+const setView = (cleanup) => {
+    if (stopCurrentView) {
+        stopCurrentView();
+    }
+    stopCurrentView = cleanup || null;
+};
 
-    if (typeof e.key === "string" && /^[0-9]$/.test(e.key)) return e.key;
-
-    // Some environments report numpad keys via `code`.
-    if (typeof e.code === "string" && /^Numpad[0-9]$/.test(e.code)) {
-        return e.code.slice("Numpad".length);
+const showMenu = async () => {
+    if (!app) {
+        return;
     }
 
-    return null;
-}
+    app.innerHTML = await loadFragment("menu.html");
+    const { initMenu, stopMenuTips } = await import("./menu.js");
+    initMenu(app);
+    setView(stopMenuTips);
+};
 
-window.addEventListener("keydown", (e) => {
-    if (!e.defaultPrevented && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (e.key === "r" || e.key === "R") {
-            e.preventDefault();
-            if (typeof scoundrel.requestReset === "function") scoundrel.requestReset();
+const showOptions = async () => {
+    if (!app) {
+        return;
+    }
+
+    app.innerHTML = await loadFragment("options.html");
+    const { initOptions } = await import("./options.js");
+    initOptions(app);
+    setView(null);
+};
+
+const showGame = async (ascension = 0) => {
+    if (!app) {
+        return;
+    }
+
+    app.innerHTML = await loadFragment("game.html");
+    const { initGame } = await import("./game.js");
+    const cleanup = initGame(app, { ascension });
+    setView(cleanup);
+};
+
+const handleAction = (action) => {
+    switch (action) {
+        case "options":
+            showOptions();
+            break;
+        case "start":
+            showGame(0);
+            break;
+        case "start-plus":
+            showGame(1);
+            break;
+        case "menu":
+            showMenu();
+            break;
+        default:
+            break;
+    }
+};
+
+const handleOptionToggle = async (key) => {
+    const { toggleOption } = await import("./options.js");
+    toggleOption(app, key);
+};
+
+if (app) {
+    app.addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (!button || !app.contains(button)) {
             return;
         }
-        if (e.key === "q" || e.key === "Q") {
-            if (scoundrel.mode === "menu" && typeof scoundrel.showDeckQueue === "function") {
-                e.preventDefault();
-                scoundrel.showDeckQueue();
-                return;
-            }
-        }
-    }
 
-    const key = keyToOptionIndex(e);
-    if (key === null) return;
-    e.preventDefault();
-    scoundrel.handleInput(key);
-});
+        const action = button.dataset.action;
+        if (action) {
+            handleAction(action);
+            return;
+        }
+
+        const optionKey = button.dataset.option;
+        if (optionKey) {
+            handleOptionToggle(optionKey);
+        }
+    });
+
+    app.addEventListener("game:menu", () => {
+        showMenu();
+    });
+
+    app.addEventListener("game:reset", (event) => {
+        const ascension = event.detail?.ascension ?? 0;
+        showGame(ascension);
+    });
+}
+
+showMenu();

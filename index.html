@@ -7,19 +7,7 @@
         <link rel="stylesheet" href="styles.css" />
     </head>
     <body>
-        <main id="terminal" aria-label="Terminal">
-            <div id="output" aria-live="polite">
-                <div class="line">Welcome.</div>
-                <div class="line dim">Click an option to play.</div>
-            </div>
-        </main>
-
-        <button id="resetBtn" class="resetBtn" type="button" hidden>[R] Reset</button>
-        <button id="queueBtn" class="resetBtn queueBtn" type="button" hidden>[Q] Decks</button>
-        <div id="bgStatus" class="bgStatus" hidden></div>
-
-        <script src="solver.js"></script>
-        <script src="scoundrel.js"></script>
-        <script src="app.js"></script>
+        <div id="app"></div>
+        <script type="module" src="app.js"></script>
     </body>
 </html>

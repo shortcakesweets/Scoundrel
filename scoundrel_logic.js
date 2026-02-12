@@ -20,7 +20,7 @@ export class Scoundrel {
 
     initialize(){
         for(const suit of [Card.SPADES, Card.HEARTS, Card.DIAMONDS, Card.CLUBS]){
-            for(const rank = 2; rank <= 14; rank++){
+            for(let rank = 2; rank <= 14; rank++){
                 if((suit === Card.HEARTS || suit === Card.DIAMONDS) && (11 <= rank && rank <= 14) && this.ascension === 0){
                     continue;
                 }
@@ -33,7 +33,7 @@ export class Scoundrel {
     }
 
     drawRoom(){
-        for(const i = 0; i < 4; i++){
+        for(let i = 0; i < 4; i++){
             if(this.room[i] === 0){
                 this.room[i] = this.deck.shift();
             }
@@ -45,7 +45,7 @@ export class Scoundrel {
     }
 
     flee(){
-        for(const i=3; i>=0; i--){
+        for(let i=3; i>=0; i--){
             if(this.room[i] != 0){
                 this.deck.push(this.room[i]);
                 this.room[i] = 0;
@@ -63,7 +63,7 @@ export class Scoundrel {
             actionList.push(-1);
         }
 
-        for(const i=0; i<4; i++){
+        for(let i=0; i<4; i++){
             const card = this.room[i];
             if(card === 0) continue;
 
@@ -184,7 +184,7 @@ export class Scoundrel {
 
     #countRoomOccupy(){
         let sum = 0;
-        for(const i=0; i<4; i++){
+        for(let i=0; i<4; i++){
             if(this.room[i] != 0) sum++;
         }
         return sum;
@@ -194,8 +194,9 @@ export class Scoundrel {
         if (!Card.isEnemy(enemy)) return false;
         if (this.weapon === 0) return false;
 
-        len = this.weaponStack.length;
+        const len = this.weaponStack.length;
         if (len === 0) return true;
         return Card.rank(enemy) < Card.rank(this.weaponStack[len - 1]);
     }
 }
+
