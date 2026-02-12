@@ -1,0 +1,78 @@
+<main class="game">
+    <section class="status-bar" aria-label="Status">
+        <div class="status-center">
+            <div class="hp-row">
+                <div class="status-deck">
+                    <img src="cards/Back.png" alt="Deck" />
+                    <span id="deck-count">0</span>
+                </div>
+                <div class="status-compact">
+                    <div class="status-room">
+                        Room <span id="room-num">1</span>
+                    </div>
+                    <div class="hp-bar" role="progressbar" aria-valuemin="0" aria-valuemax="20" aria-valuenow="20">
+                        <div class="hp-fill" id="hp-fill"></div>
+                        <span class="hp-text" id="hp-text">HP 20 / 20</span>
+                    </div>
+                    <div class="hold-actions">
+                        <button class="hold-button" type="button" data-hold-action="menu">
+                            <span class="hold-label">Main Menu</span>
+                        </button>
+                        <button class="hold-button" type="button" data-hold-action="reset">
+                            <span class="hold-label">Reset</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="status-ace" aria-hidden="true"></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="dialogue" aria-label="Dungeon narration">
+        <p id="dialogue-text">The air is stale and the torchlight flickers as a shadow moves across the stone.</p>
+    </section>
+
+    <section class="card-grid room-grid" aria-label="Room">
+        <button class="card-button room-card" type="button" data-room-slot="0">
+            <img src="cards/Blank.png" alt="Room card" />
+            <span class="room-hint" data-room-hint></span>
+        </button>
+        <button class="card-button room-card" type="button" data-room-slot="1">
+            <img src="cards/Blank.png" alt="Room card" />
+            <span class="room-hint" data-room-hint></span>
+        </button>
+        <button class="card-button room-card" type="button" data-room-slot="2">
+            <img src="cards/Blank.png" alt="Room card" />
+            <span class="room-hint" data-room-hint></span>
+        </button>
+        <button class="card-button room-card" type="button" data-room-slot="3">
+            <img src="cards/Blank.png" alt="Room card" />
+            <span class="room-hint" data-room-hint></span>
+        </button>
+    </section>
+
+    <section class="weapon-area" aria-label="Weapon">
+        <button class="card-button weapon-choice" type="button" data-action="weapon">
+            <img id="weapon-card" src="cards/Blank.png" alt="Weapon card" />
+            <span class="weapon-label">Current<br />Weapon</span>
+        </button>
+        <div class="weapon-stack-column">
+            <div class="weapon-stack" id="weapon-stack" aria-label="Weapon stack"></div>
+            <span class="weapon-label">Stack</span>
+        </div>
+        <button class="card-button weapon-choice fist-choice" type="button" data-action="fist">
+            <img id="fist-card" src="cards/Fist.png" alt="Fist" />
+            <span class="weapon-label">Fist</span>
+        </button>
+        <button class="flee-button" type="button" data-action="flee">
+            <img src="cards/Flee.png" alt="Flee" />
+            <span class="flee-label">Flee</span>
+        </button>
+    </section>
+
+    <!-- DEBUG: remove this block when done
+    <button class="debug-button" type="button" data-debug="stack">Debug: Add Stack Card</button>
+    DEBUG END -->
+
+    <p class="hint-text" id="hint-text"></p>
+</main>
