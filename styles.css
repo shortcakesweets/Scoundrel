@@ -49,7 +49,6 @@ body {
     justify-content: center;
     gap: 12px;
     padding: 10px 10px;
-    border: 1px solid #1f1f1f;
 }
 
 .dialogue {
@@ -582,4 +581,18 @@ h1 {
     .tips {
         font-size: 0.85rem;
     }
+
+    .card-button:hover img,
+    .card-button:focus-visible img,
+    .weapon-choice:not(.is-choice):hover img,
+    .weapon-choice:not(.is-choice):focus-visible img {
+        transform: none;
+        filter: none;
+        box-shadow: none;
+    }
+
+    .card-button img {
+        transition: none;
+    }
+
 }
