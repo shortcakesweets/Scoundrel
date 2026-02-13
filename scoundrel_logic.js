@@ -144,7 +144,7 @@ export class Scoundrel {
             }
         }
 
-        if (this.hp > 0 && this.#countRoomOccupy() === 1){
+        if (this.hp > 0 && this.#countRoomOccupy() === 1 && this.deck.length > 1){
             this.drawRoom();
         }
 
