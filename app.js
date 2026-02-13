@@ -74,6 +74,10 @@ const handleOptionToggle = async (key) => {
 };
 
 if (app) {
+    app.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+    });
+
     app.addEventListener("click", (event) => {
         const button = event.target.closest("button");
         if (!button || !app.contains(button)) {
