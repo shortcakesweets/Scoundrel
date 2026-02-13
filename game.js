@@ -261,30 +261,30 @@ const ensureWeaponFirstRoom = (game) => {
 
 const hintForCard = (card) => {
     if (!card) {
-        return "";
+        return { text: "", type: "" };
     }
 
     if (Card.isEnemy(card)) {
-        return "Enemy";
+        return { text: "Enemy", type: "enemy" };
     }
 
     if (Card.isWeapon(card)) {
-        return "Weapon";
+        return { text: "Weapon", type: "weapon" };
     }
 
     if (Card.isRepairKit(card)) {
-        return "Repair kit";
+        return { text: "Repair kit", type: "repair" };
     }
 
     if (Card.isHealthPotion(card)) {
-        return "Health Potion";
+        return { text: "Health Potion", type: "health" };
     }
 
     if (Card.isPoisonPotion(card)) {
-        return "Poison Potion";
+        return { text: "Poison Potion", type: "poison" };
     }
 
-    return "";
+    return { text: "", type: "" };
 };
 
 const render = (state) => {
@@ -297,9 +297,10 @@ const render = (state) => {
     const hpBar = root.querySelector(".hp-bar");
     const hintText = root.querySelector("#hint-text");
     const dialogueText = root.querySelector("#dialogue-text");
-    const fleeButton = root.querySelector("[data-action='flee']");
     const weaponButton = root.querySelector("[data-action='weapon']");
-    const fistButton = root.querySelector("[data-action='fist']");
+    const actionButton = root.querySelector("#action-button");
+    const actionImg = root.querySelector("#action-card");
+    const actionLabel = root.querySelector("#action-label");
 
     if (deckCount) {
         deckCount.textContent = String(game.deck.length);
@@ -342,13 +343,19 @@ const render = (state) => {
 
         img.src = cardToImage(card);
         img.alt = cardToAlt(card);
-        button.disabled = card === 0 || game.isTerminal();
+        button.disabled = game.isTerminal();
         button.dataset.empty = card === 0 ? "true" : "false";
         button.classList.toggle("is-selected", slot === state.selectedSlot);
 
         const hint = button.querySelector("[data-room-hint]");
         if (hint) {
-            hint.textContent = hintForCard(card);
+            const hintData = hintForCard(card);
+            hint.textContent = hintData.text;
+            if (hintData.type) {
+                hint.dataset.hintType = hintData.type;
+            } else {
+                delete hint.dataset.hintType;
+            }
         }
     });
 
@@ -383,29 +390,37 @@ const render = (state) => {
         });
     }
 
-    if (fleeButton) {
-        const fleeAvailable = possibleActions.includes(-1) && !game.isTerminal();
-        fleeButton.disabled = !fleeAvailable;
-        fleeButton.classList.toggle("is-disabled", !fleeAvailable);
-    }
-
     const selectedSlot = state.selectedSlot;
     const hasEnemySelection = selectedSlot !== null && Card.isEnemy(game.room[selectedSlot]);
     const weaponAvailable = hasEnemySelection && possibleActions.includes(2 * selectedSlot + 1);
     const fistAvailable = hasEnemySelection && possibleActions.includes(2 * selectedSlot);
+    const fleeAvailable = possibleActions.includes(-1) && !game.isTerminal();
+
+    if (actionButton && actionImg && actionLabel) {
+        if (hasEnemySelection) {
+            actionButton.dataset.action = "fist";
+            actionImg.src = "cards/Fist.png";
+            actionImg.alt = "Fist";
+            actionLabel.textContent = "Fist";
+            actionButton.classList.add("is-choice");
+            actionButton.disabled = !fistAvailable;
+            actionButton.classList.toggle("is-disabled", !fistAvailable);
+        } else {
+            actionButton.dataset.action = "flee";
+            actionImg.src = "cards/Flee.png";
+            actionImg.alt = "Flee";
+            actionLabel.textContent = "Flee";
+            actionButton.classList.remove("is-choice");
+            actionButton.disabled = !fleeAvailable;
+            actionButton.classList.toggle("is-disabled", !fleeAvailable);
+        }
+    }
 
     if (weaponButton) {
         const disabled = hasEnemySelection && !weaponAvailable;
         weaponButton.disabled = disabled;
         weaponButton.classList.toggle("is-choice", hasEnemySelection);
         weaponButton.classList.toggle("is-disabled", disabled);
-    }
-
-    if (fistButton) {
-        const disabled = hasEnemySelection && !fistAvailable;
-        fistButton.disabled = disabled;
-        fistButton.classList.toggle("is-choice", hasEnemySelection);
-        fistButton.classList.toggle("is-disabled", disabled);
     }
 
     if (hintText) {
@@ -424,8 +439,8 @@ const render = (state) => {
     const actionText = selectionText || actionToText(state.lastAction);
     const resultText = game.isTerminal()
         ? (game.isWin()
-            ? `You escaped the dungeon. Score: ${game.score()}.`
-            : `You fell. Score: ${game.score()}.`)
+            ? `You escaped the dungeon.\nScore: ${game.score()}.`
+            : `You fell.\nScore: ${game.score()}.`)
         : "";
     const introText = buildIntroText(state, game);
     let roomText = "";
@@ -472,9 +487,18 @@ export const initGame = (root = document, config = {}) => {
     };
 
     const handleClick = (event) => {
+        const selectedSlot = state.selectedSlot;
+        const selectionActive = selectedSlot !== null && Card.isEnemy(game.room[selectedSlot]);
         const actionButton = event.target.closest("[data-action]");
+        const action = actionButton?.dataset.action;
+
+        if (selectionActive && action !== "weapon" && action !== "fist") {
+            state.selectedSlot = null;
+            render(state);
+            return;
+        }
+
         if (actionButton && root.contains(actionButton)) {
-            const action = actionButton.dataset.action;
             if (action === "flee") {
                 if (game.getPossibleActions().includes(-1)) {
                     state.lastAction = buildActionInfo(game, -1, 0);
@@ -575,6 +599,10 @@ export const initGame = (root = document, config = {}) => {
     };
 
     const handleHoldPointerDown = (event) => {
+        if (state.selectedSlot !== null && Card.isEnemy(game.room[state.selectedSlot])) {
+            return;
+        }
+
         const button = event.target.closest("[data-hold-action]");
         if (!button || !root.contains(button)) {
             return;
@@ -599,10 +627,19 @@ export const initGame = (root = document, config = {}) => {
         cancelHold();
     };
 
+    const handleCancelContextMenu = (event) => {
+        if (state.selectedSlot !== null && Card.isEnemy(game.room[state.selectedSlot])) {
+            event.preventDefault();
+            state.selectedSlot = null;
+            render(state);
+        }
+    };
+
     root.addEventListener("click", handleClick);
     root.addEventListener("pointerdown", handleHoldPointerDown);
     root.addEventListener("pointerup", handleHoldPointerUp);
     root.addEventListener("pointercancel", handleHoldPointerUp);
+    root.addEventListener("contextmenu", handleCancelContextMenu);
     render(state);
 
     return () => {
@@ -610,5 +647,6 @@ export const initGame = (root = document, config = {}) => {
         root.removeEventListener("pointerdown", handleHoldPointerDown);
         root.removeEventListener("pointerup", handleHoldPointerUp);
         root.removeEventListener("pointercancel", handleHoldPointerUp);
+        root.removeEventListener("contextmenu", handleCancelContextMenu);
     };
 };

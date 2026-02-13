@@ -49,6 +49,15 @@ const showGame = async (ascension = 0) => {
     setView(cleanup);
 };
 
+const showHowTo = async () => {
+    if (!app) {
+        return;
+    }
+
+    app.innerHTML = await loadFragment("howto.html");
+    setView(null);
+};
+
 const handleAction = (action) => {
     switch (action) {
         case "options":
@@ -59,6 +68,9 @@ const handleAction = (action) => {
             break;
         case "start-plus":
             showGame(1);
+            break;
+        case "how-to-play":
+            showHowTo();
             break;
         case "menu":
             showMenu();

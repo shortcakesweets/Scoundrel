@@ -6,6 +6,18 @@
     box-sizing: border-box;
 }
 
+button,
+a,
+[role="button"] {
+    -webkit-tap-highlight-color: transparent; /* iOS Safari + Android Chrome */
+}
+
+html,
+body {
+    height: 100%;
+    overflow: hidden;
+}
+
 body {
     margin: 0;
     min-height: 100vh;
@@ -29,7 +41,7 @@ body {
     --card-w: 71px;
     --card-h: 96px;
     --stack-offset: 23px;
-    --stack-max: 5;
+    --stack-max: 8;
 }
 
 .game .card-button {
@@ -142,35 +154,6 @@ body {
     color: #f2f2f2;
 }
 
-.flee-button {
-    background: transparent;
-    border: none;
-    padding: 0;
-    display: grid;
-    gap: 6px;
-    justify-items: center;
-    color: #f2f2f2;
-    font-size: 0.7rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    cursor: pointer;
-}
-
-.flee-button img {
-    width: var(--card-w, 71px);
-    height: var(--card-h, 96px);
-}
-
-.flee-button.is-disabled {
-    color: #6f6f6f;
-    cursor: not-allowed;
-}
-
-.flee-button.is-disabled img {
-    filter: grayscale(0.7) brightness(0.8);
-    opacity: 0.6;
-}
-
 .hold-actions {
     display: flex;
     gap: 10px;
@@ -241,13 +224,6 @@ body {
     box-shadow: 0 0 0 2px #f2d675, 0 0 14px rgba(242, 214, 117, 0.45);
 }
 
-.room-card[disabled]:hover img,
-.room-card[disabled]:focus-visible img,
-.room-card[data-empty="true"]:hover img,
-.room-card[data-empty="true"]:focus-visible img {
-    transform: none;
-    filter: grayscale(0.7) brightness(0.8);
-}
 
 .weapon-area {
     width: min(92vw, 820px);
@@ -264,6 +240,29 @@ body {
     flex: 0 0 auto;
     color: #f2f2f2;
     gap: 10px;
+}
+
+.action-button {
+    width: calc(var(--card-w, 71px) * 1.05);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    flex: 0 0 auto;
+    color: #f2f2f2;
+    gap: 10px;
+}
+
+.action-button.is-disabled {
+    color: #6f6f6f;
+    cursor: not-allowed;
+}
+
+.action-button.is-disabled img {
+    filter: grayscale(0.7) brightness(0.8);
+    opacity: 0.6;
+}
+
+.action-button.is-choice img {
+    box-shadow: 0 0 0 2px #f2d675, 0 0 14px rgba(242, 214, 117, 0.45);
 }
 
 .weapon-label {
@@ -297,11 +296,6 @@ body {
     box-shadow: none;
 }
 
-.weapon-choice:not(.is-choice):hover img,
-.weapon-choice:not(.is-choice):focus-visible img {
-    transform: none;
-    filter: none;
-}
 
 .weapon-stack {
     position: relative;
@@ -362,11 +356,28 @@ body {
     text-align: center;
 }
 
+.room-hint[data-hint-type="weapon"] {
+    color: #7fc8ff;
+}
+
+.room-hint[data-hint-type="repair"] {
+    color: #f2d675;
+}
+
+.room-hint[data-hint-type="health"] {
+    color: #ff7a7a;
+}
+
+.room-hint[data-hint-type="poison"] {
+    color: #b58cff;
+}
+
 .hints-hidden .room-hint {
     visibility: hidden;
 }
 
 .menu {
+    position: relative;
     min-height: 100vh;
     display: grid;
     grid-template-rows: 22vh auto 1fr;
@@ -374,6 +385,16 @@ body {
     justify-items: center;
     gap: 28px;
     padding: 48px 16px 36px;
+}
+
+.debug-version {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #6f6f6f;
 }
 
 h1 {
@@ -469,9 +490,97 @@ h1 {
 }
 
 #tip-text {
+    display: block;
     text-transform: none;
     letter-spacing: 0.02em;
     color: #c6c6c6;
+    line-height: 1.4;
+    height: calc(4 * 1.4em);
+    overflow: hidden;
+}
+
+.howto {
+    position: fixed;
+    inset: 0;
+    padding: 28px 16px 24px;
+}
+
+.howto-body {
+    width: min(92vw, 820px);
+    height: 100%;
+    overflow-y: auto;
+    padding: 6px 6px 18px;
+    margin: 0 auto;
+    color: #c8c8c8;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+}
+
+.howto-body h2 {
+    margin: 0 0 10px;
+    font-size: 1.05rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #f2f2f2;
+}
+
+.howto-body h3 {
+    margin: 18px 0 8px;
+    font-size: 0.85rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #d6d6d6;
+}
+
+.howto-body p {
+    margin: 0 0 12px;
+}
+
+.howto-body ol {
+    margin: 0 0 12px;
+    padding-left: 2em;
+}
+
+.howto-body li {
+    margin: 0 0 12px;
+}
+
+.howto-body li p {
+    margin: 0 0 8px;
+}
+
+.howto-body strong {
+    letter-spacing: 0.08em;
+}
+
+.howto-term {
+    font-weight: 600;
+}
+
+.howto-term.howto-weapon {
+    color: #7fc8ff;
+}
+
+.howto-term.howto-health {
+    color: #ff7a7a;
+}
+
+.howto-term.howto-enemy {
+    color: #8a8a8a;
+}
+
+.howto-term.howto-repair {
+    color: #f2d675;
+}
+
+.howto-term.howto-poison {
+    color: #b58cff;
+}
+
+.howto-menu-button {
+    margin: 16px auto 0;
 }
 
 @media (max-width: 640px) {
@@ -481,7 +590,7 @@ h1 {
         --card-w: 60px;
         --card-h: 81px;
         --stack-offset: 19px;
-        --stack-max: 3;
+        --stack-max: 6;
     }
 
     .status-bar {
@@ -513,11 +622,6 @@ h1 {
         gap: 10px;
     }
 
-    .flee-button img {
-        width: var(--card-w, 60px);
-        height: var(--card-h, 81px);
-    }
-
     .hold-button {
         min-width: 100px;
         padding: 5px 10px;
@@ -528,7 +632,7 @@ h1 {
         font-size: 0.72rem;
     }
 
-    .flee-button {
+    .action-button {
         font-size: 0.65rem;
     }
 
@@ -568,17 +672,24 @@ h1 {
         align-self: start;
     }
 
-    .card-button:hover img,
-    .card-button:focus-visible img,
-    .weapon-choice:not(.is-choice):hover img,
-    .weapon-choice:not(.is-choice):focus-visible img {
-        transform: none;
-        filter: none;
-        box-shadow: none;
-    }
-
     .card-button img {
         transition: none;
+    }
+
+    .howto {
+        padding: 22px 14px 20px;
+    }
+
+    .howto-body {
+        font-size: 0.82rem;
+    }
+
+    .howto-body h2 {
+        font-size: 0.95rem;
+    }
+
+    .howto-body h3 {
+        font-size: 0.78rem;
     }
 
 }
