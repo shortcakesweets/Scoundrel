@@ -161,7 +161,7 @@ export class Scoundrel {
                 ...this.deck.filter(card => Card.isEnemy(card)),
                 ...this.room.filter(card => Card.isEnemy(card))
             ];
-            return remainingEnemies.reduce((sum, card) => sum + Card.rank(card), 0);
+            return remainingEnemies.reduce((sum, card) => sum + Card.rank(card), 0) * -1;
         }
 
         else if(this.isWin()){
