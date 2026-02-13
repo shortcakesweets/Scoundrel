@@ -102,6 +102,14 @@ const randomEnemyCard = () => {
     return Card.card(suit, rank);
 };
 
+const getEnemyDamage = (game, card, method) => {
+    if (method === "weapon") {
+        const weaponRank = game.weapon ? Card.rank(game.weapon) : 0;
+        return Math.max(Card.rank(card) - weaponRank, 0);
+    }
+    return Card.rank(card);
+};
+
 const buildActionInfo = (game, actionId, card) => {
     if (actionId === -1) {
         return { type: "flee" };
@@ -110,10 +118,14 @@ const buildActionInfo = (game, actionId, card) => {
         return null;
     }
     if (Card.isEnemy(card)) {
+        const method = actionId % 2 === 1 ? "weapon" : "fist";
+        const damage = getEnemyDamage(game, card, method);
+        const lethal = game.hp < damage;
         return {
             type: "enemy",
             card,
-            method: actionId % 2 === 1 ? "weapon" : "fist",
+            method,
+            lethal,
         };
     }
     if (Card.isWeapon(card)) {
@@ -140,6 +152,12 @@ const actionToText = (info) => {
         case "flee":
             return "You dash to a new room.";
         case "enemy":
+            if (info.lethal) {
+                if (info.method === "weapon") {
+                    return `You swing at ${cardName}, but it was not enough.`;
+                }
+                return `You charge at ${cardName}, but it's futile.`;
+            }
             if (info.method === "weapon") {
                 return `You cut down ${cardName} with your weapon.`;
             }
@@ -147,7 +165,7 @@ const actionToText = (info) => {
         case "weapon":
             return `You equip ${cardName}.`;
         case "repair":
-            return `You use ${cardName} to tune up your weapon.`;
+            return `You use ${cardName} to sharpen your weapon.`;
         case "health":
             if (info.effective) {
                 return `You drink ${cardName}. You feel better.`;
@@ -155,7 +173,7 @@ const actionToText = (info) => {
             return `You drink ${cardName}. It fizzles.`;
         case "poison":
             if (info.effective) {
-                return `You drink ${cardName}. It burns.`;
+                return `You drink ${cardName}. Your throat burns!`;
             }
             return `You drink ${cardName}. It fizzles.`;
         case "take":
@@ -406,7 +424,7 @@ const render = (state) => {
     const actionText = selectionText || actionToText(state.lastAction);
     const resultText = game.isTerminal()
         ? (game.isWin()
-            ? `You escaped! Score: ${game.score()}.`
+            ? `You escaped the dungeon. Score: ${game.score()}.`
             : `You fell. Score: ${game.score()}.`)
         : "";
     const introText = buildIntroText(state, game);
