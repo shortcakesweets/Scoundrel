@@ -1,6 +1,26 @@
 const app = document.getElementById("app");
 let stopCurrentView = null;
 
+const preloadImages = () => {
+    const suits = ["C", "D", "H", "S"];
+    const ranks = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
+    const paths = ["cards/Back.png", "cards/Blank.png", "cards/Fist.png", "cards/Flee.png"];
+
+    suits.forEach((suit) => {
+        ranks.forEach((rank) => {
+            paths.push(`cards/${suit}${rank}.png`);
+        });
+    });
+
+    const preloaded = [];
+    paths.forEach((src) => {
+        const img = new Image();
+        img.decoding = "async";
+        img.src = src;
+        preloaded.push(img);
+    });
+};
+
 const loadFragment = async (path) => {
     const response = await fetch(path, { cache: "no-store" });
     if (!response.ok) {
@@ -117,5 +137,8 @@ if (app) {
         showGame(ascension);
     });
 }
+
+preloadImages();
 
 showMenu();
+
