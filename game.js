@@ -132,7 +132,12 @@ const buildActionInfo = (game, actionId, card) => {
         return { type: "weapon", card };
     }
     if (Card.isRepairKit(card)) {
-        return { type: "repair", card, hadStack: game.weaponStack.length > 0 };
+        return {
+            type: "repair",
+            card,
+            hasWeapon: game.weapon !== 0,
+            hadStack: game.weaponStack.length > 0,
+        };
     }
     if (Card.isHealthPotion(card)) {
         return { type: "health", card, effective: game.isPotionEffective };
@@ -165,6 +170,12 @@ const actionToText = (info) => {
         case "weapon":
             return `You equip ${cardName}.`;
         case "repair":
+            if (!info.hasWeapon) {
+                return `You use ${cardName}, but you have no weapon to repair.`;
+            }
+            if (!info.hadStack) {
+                return `You use ${cardName}, but your weapon doesn't need repairing.`;
+            }
             return `You use ${cardName} to sharpen your weapon.`;
         case "health":
             if (info.effective) {
